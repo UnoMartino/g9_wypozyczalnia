@@ -1,0 +1,27 @@
+{
+  "vehicles": [
+    {
+      "name": "PLACEHOLDER",
+      "license_plate": "ABC123",
+      "mileage": 123,
+
+      "kind": "CAR",
+      "category": "A",
+      "data": {
+
+      },
+
+      "condition": 1,
+      "rent": {
+        "on_hold": 1,
+        "due": "12-12-12"
+      }
+    },
+
+    {}
+
+
+  ]
+
+
+}

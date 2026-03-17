@@ -65,7 +65,7 @@ const char* detect_compiler() {
     Nob_Cmd cmd = {0};
     Nob_Cmd_Opt opt = {0};
 
-    // ustawiamy scieki na bledy, tak aby nie zasmicaly konsoli
+    // ustawiamy sciezki na bledy, tak aby nie zasmicaly konsoli
     #ifdef _WIN32
     opt.stdout_path = "NUL"; opt.stderr_path = "NUL";
     #else
@@ -97,7 +97,7 @@ bool compile_source(const char *compiler, const char *src_path, const char **fla
 
     if (!nob_needs_rebuild1(obj_path, src_path)) return true;
 
-    nob_log(NOB_INFO, "Kompilowanie %s -> %s", src_path, obj_path);
+    nob_log(NOB_INFO, "kcompiling %s -> %s", src_path, obj_path);
     Nob_Cmd cmd = {0};
     nob_cmd_append(&cmd, compiler);
 
