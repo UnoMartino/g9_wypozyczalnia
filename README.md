@@ -14,6 +14,10 @@ Skrypt sam pobiera pliki `.cpp` z katalogu `src/` i odtwarza strukturę w `build
 ### Windows 
 TBD
 
+### Flagi
+
+- `-jX` - tworzy X wątków i kompiluje pliki, co znacznie przyspiesza kompilowanie projektu
+
 ### Parametry 
 
 **action:**

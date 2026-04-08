@@ -10,21 +10,27 @@
 #define EXEC_PATH BUILD_DIR "/wypozyczalnia"
 #endif
 
-// --- Konfiguracja flag ---
+// ====
+
+// configuration flags
 const char *debug_flags[] = {
-    "-ggdb", "-O0", "-I", "src", "-I", "include",
-    "-Wall", "-Wextra", "-std=c++20"
+    "-ggdb", "-O0",
+    "-I", "src",
+    "-I", "include",
+    "-Wall", "-Wextra", "-std=c++20", "-pthread"
 };
 
 const char *release_flags[] = {
-    "-O3", "-I", "src", "-I", "include",
-    "-Wall", "-Wextra", "-std=c++20"
+    "-O3",
+    "-I", "src",
+    "-I", "include",
+    "-Wall", "-Wextra", "-std=c++20", "-pthread"
 };
 
 Nob_File_Paths sources = {0};
 
 bool collect_sources(Nob_Walk_Entry entry) {
-    // klonujemy strukture folderow
+    // copy the file structure
     if (entry.type == NOB_FILE_DIRECTORY) {
 
         const char *mirrored_dir = nob_temp_sprintf("%s/%s", OBJ_DIR, entry.path);
@@ -39,6 +45,13 @@ bool collect_sources(Nob_Walk_Entry entry) {
 
     Nob_String_View path_sv = nob_sv_from_cstr(entry.path);
     if (nob_sv_end_with(path_sv, ".cpp")) {
+
+        if (strstr(entry.path, "_test.cpp") != NULL ||
+            strstr(entry.path, "benchmark") != NULL ||
+            strstr(entry.path, "fuzzer") != NULL) {
+            return true;
+        }
+
         nob_da_append(&sources, nob_temp_strdup(entry.path));
     }
 
@@ -52,34 +65,36 @@ const char *get_obj_path(const char *src_path) {
 bool ensure_build_dirs(void) {
     if (!nob_mkdir_if_not_exists(BUILD_DIR)) return false;
     if (!nob_mkdir_if_not_exists(OBJ_DIR)) return false;
+    if (!nob_mkdir_if_not_exists(OBJ_DIR "/ext")) return false;
+
     return true;
 }
 
-// auto detekcja kompilatora clang++/g++
+// detect compiler g++/clang++
 const char* detect_compiler() {
-    // sprawdz zmienna srodowiskowa
+    // check environment variable
     const char *cxx = getenv("CXX");
     if (cxx != NULL) return cxx;
 
-    // test kompilatorow
+    // test compilers
     Nob_Cmd cmd = {0};
     Nob_Cmd_Opt opt = {0};
 
-    // ustawiamy sciezki na bledy, tak aby nie zasmicaly konsoli
+    // set error path
     #ifdef _WIN32
     opt.stdout_path = "NUL"; opt.stderr_path = "NUL";
     #else
     opt.stdout_path = "/dev/null"; opt.stderr_path = "/dev/null";
     #endif
 
-    // sprawdz clang++
+    // check clang++
     nob_cmd_append(&cmd, "clang++", "--version");
     if (nob_cmd_run_opt(&cmd, opt)) {
         nob_cmd_free(cmd);
         return "clang++";
     }
 
-    // fallback: sprawdz czy dziala g++
+    // fallback: check g++
     cmd.count = 0; // reset komenty
     nob_cmd_append(&cmd, "g++", "--version");
     if (nob_cmd_run_opt(&cmd, opt)) {
@@ -97,7 +112,7 @@ bool compile_source(const char *compiler, const char *src_path, const char **fla
 
     if (!nob_needs_rebuild1(obj_path, src_path)) return true;
 
-    nob_log(NOB_INFO, "kcompiling %s -> %s", src_path, obj_path);
+    nob_log(NOB_INFO, "compiling %s -> %s", src_path, obj_path);
     Nob_Cmd cmd = {0};
     nob_cmd_append(&cmd, compiler);
 
@@ -136,7 +151,7 @@ bool link_objects(const char *compiler) {
     return success;
 }
 
-bool build_project(const char *compiler, const char **flags, size_t flags_count) {
+bool build_project(const char *compiler, const char **flags, size_t flags_count, size_t threads) {
     if (!ensure_build_dirs()) return false;
     if (!nob_walk_dir("src", collect_sources)) return false;
 
@@ -145,9 +160,31 @@ bool build_project(const char *compiler, const char **flags, size_t flags_count)
         return true;
     }
 
+    Nob_Procs procs = {0};
+
     for (size_t i = 0; i < sources.count; ++i) {
-        if (!compile_source(compiler, sources.items[i], flags, flags_count)) return false;
+        const char *src_path = sources.items[i];
+        const char *obj_path = get_obj_path(src_path);
+
+        if (nob_needs_rebuild1(obj_path, src_path)) {
+            nob_log(NOB_INFO, "compiling %s -> %s", src_path, obj_path);
+
+            Nob_Cmd cmd = {0};
+            nob_cmd_append(&cmd, compiler);
+            for (size_t j = 0; j < flags_count; ++j) {
+                nob_cmd_append(&cmd, flags[j]);
+            }
+            nob_cmd_append(&cmd, "-c", src_path, "-o", obj_path);
+
+            bool ok = nob_cmd_run(&cmd, .async = &procs, .max_procs = threads);
+            nob_cmd_free(cmd);
+
+            if (!ok) return false;
+        }
     }
+
+    // flush any remaining compilation jobs before moving to linking
+    if (!nob_procs_flush(&procs)) return false;
 
     return link_objects(compiler);
 }
@@ -164,11 +201,25 @@ void clean_build(void) {
 
 int main(int argc, char** argv) {
     NOB_GO_REBUILD_URSELF(argc, argv);
+    nob_shift_args(&argc, &argv); // pop ./nob
 
-    // usuwamy ./nob z argumentów
-    nob_shift_args(&argc, &argv);
+    // extract -jX flag and shift the remaining args down
+    int threads = 1;
+    int new_argc = 0;
+    for (int i = 0; i < argc; ++i) {
+        if (strncmp(argv[i], "-j", 2) == 0) {
+            if (strlen(argv[i]) > 2) {
+                threads = atoi(argv[i] + 2); // e.g., -j8
+            } else if (i + 1 < argc) {
+                threads = atoi(argv[++i]);   // e.g., -j 8
+            }
+        } else {
+            // keep args that aren't related to threading
+            argv[new_argc++] = argv[i];
+        }
+    }
+    argc = new_argc;
 
-    // defaultowa akcja to build
     const char *action = argc > 0 ? nob_shift_args(&argc, &argv) : "build";
 
     if (strcmp(action, "clean") == 0) {
@@ -176,7 +227,6 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // default to debug mode
     const char *mode = argc > 0 ? nob_shift_args(&argc, &argv) : "debug";
 
     const char **flags = debug_flags;
@@ -186,14 +236,15 @@ int main(int argc, char** argv) {
         flags = release_flags;
         flags_count = NOB_ARRAY_LEN(release_flags);
     } else if (strcmp(mode, "debug") != 0) {
-        nob_log(NOB_ERROR, "you can only use 'debug' or 'relase' mode, not '%s'", mode);
+        nob_log(NOB_ERROR, "you can only use 'debug' or 'release' mode, not '%s'", mode);
         return 1;
     }
 
     const char *compiler = detect_compiler();
-    nob_log(NOB_INFO, "compiler: %s | mode: %s", compiler, mode);
+    nob_log(NOB_INFO, "compiler: %s | mode: %s | threads: %d", compiler, mode, threads);
 
-    if (!build_project(compiler, flags, flags_count)) return 1;
+    // pass the extracted thread count into the build system
+    if (!build_project(compiler, flags, flags_count, threads)) return 1;
 
     if (strcmp(action, "run") == 0) {
         Nob_Cmd cmd = {0};
