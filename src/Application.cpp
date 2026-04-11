@@ -7,8 +7,8 @@
 #include "data/vehicle/Motorcycle.hpp"
 #include "data/vehicle/Truck.hpp"
 
-
 #include <iostream>
+#include <string>
 
 // ====
 
@@ -23,6 +23,20 @@ void Application::run() {
     }
 
     debugPrintVehicles();
+
+    m_auth.signUp("admin", "superTajneHaslo123");
+
+    if (m_auth.signIn("client", "123")) {
+        // should not work
+    }
+
+    if (m_auth.signIn("admin", "zleHaslo")) {
+        std::cout << "Should not print\n";
+    }
+
+    if (m_auth.signIn("admin", "superTajneHaslo123")) {
+        std::cout << "Hello, World!\n";
+    }
 
     while (m_state.isRunning) {
 

@@ -5,6 +5,8 @@
 
 #include "data/vehicle/Vehicle.hpp"
 
+#include "util/Auth.hpp"
+
 // ====
 
 // stores application state data
@@ -19,6 +21,7 @@ struct ApplicationState {
 class Application {
 private:
     ApplicationState m_state;
+    AuthManager m_auth;
 
     std::unique_ptr<Vehicle> parseVehicle(const json& j);
 
