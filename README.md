@@ -31,6 +31,25 @@ do programu
 ## Diagram programu
 ![Diagram programu](docs/img/diagram.jpg)
 
+---
+
+## Diagram klas programu 
+![Diagram klass](docs/img/class_diagram.png)
+
+### Opis pszczególnych klas
+
+**Application** - główna klasa przechowująca dane i metody potrzebne do wykonywania aplikacji. Ładuje i przechowuje listę pojazdów w bazie oraz listę użytkowników w bazie. Odczytuje oraz zapisuje dane na dysk. A także przechowuje obiekt klasy odpowiedzialny za interfejs. 
+
+**Vehicle** - przechowuje ogólne informacje o pojeździe i jego stanie. 
+
+**Car, Motorcycle, Truck** - klasy dziedziczące po `Vehicle`, są uzupełnieniem danych, które pasują wyłącznie do konkretnej klasyfikacji pojazdu. 
+
+**User** - przechowuje ogólne informacje o użytkowniku t.j.: nazwa użytkownika czy hasło oraz różne flagi (np.: `is_admin`).
+
+**View** - klasa odpowiedzialna za tworzenie oraz obsługę elementów interfejsu (TUI) 
+
+---
+
 ## Skład zespołu
 - Marcin Madanowicz
 - Oskar Strzelecki
