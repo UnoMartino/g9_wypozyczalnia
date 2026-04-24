@@ -4,15 +4,28 @@
 
 ## Build
 
-Projekt korzysta z customowego systemu budowania opertego na `nob.h`. Pozwala to pominąc grzebanie w CMake.
+Projekt korzysta z customowego systemu budowania opertego na `nob.h`. Pozwala to pominąć grzebanie w skompilokwanym CMake.
 Skrypt sam pobiera pliki `.cpp` z katalogu `src/` i odtwarza strukturę w `build/obj/`
 
 ### Linux / macOS
 ```sh
-./build.sh <action> <mode>
+./build.sh (flags) <action> <mode>
 ```
+Przykład: `./build.sh -j8 run debug`
 ### Windows 
-TBD
+
+1. Wymagany jest kompilator `gcc` i `g++` (najlepiej zainstalowany przez MSYS2/MinGW-w64) 
+2. System powinien zawierać globalną zmienną CC oraz CXX, która wskazuje scieżkę kompilatora C i C++
+
+```cmd
+.\build.bat (flags) <action> <mode>
+```
+Przykład: `.\build.bat -j8 run debug`
+
+
+### Flagi
+
+- `-jX` - tworzy X wątków i kompiluje pliki, co znacznie przyspiesza kompilowanie projektu
 
 ### Parametry 
 
@@ -30,25 +43,6 @@ do programu
 
 ## Diagram programu
 ![Diagram programu](docs/img/diagram.jpg)
-
----
-
-## Diagram klas programu 
-![Diagram klass](docs/img/class_diagram.png)
-
-### Opis pszczególnych klas
-
-**Application** - główna klasa przechowująca dane i metody potrzebne do wykonywania aplikacji. Ładuje i przechowuje listę pojazdów w bazie oraz listę użytkowników w bazie. Odczytuje oraz zapisuje dane na dysk. A także przechowuje obiekt klasy odpowiedzialny za interfejs. 
-
-**Vehicle** - przechowuje ogólne informacje o pojeździe i jego stanie. 
-
-**Car, Motorcycle, Truck** - klasy dziedziczące po `Vehicle`, są uzupełnieniem danych, które pasują wyłącznie do konkretnej klasyfikacji pojazdu. 
-
-**User** - przechowuje ogólne informacje o użytkowniku t.j.: nazwa użytkownika czy hasło oraz różne flagi (np.: `is_admin`).
-
-**View** - klasa odpowiedzialna za tworzenie oraz obsługę elementów interfejsu (TUI) 
-
----
 
 ## Skład zespołu
 - Marcin Madanowicz
