@@ -1,4 +1,5 @@
 #define NOB_IMPLEMENTATION
+#define NOB_EXPERIMENTAL_DELETE_OLD
 #include "nob.h"
 
 #define BUILD_DIR "build"
@@ -59,7 +60,14 @@ bool collect_sources(Nob_Walk_Entry entry) {
 }
 
 const char *get_obj_path(const char *src_path) {
-    return nob_temp_sprintf("%s/%s.o", OBJ_DIR, src_path);
+    char *path_copy = nob_temp_strdup(src_path);
+    size_t len = strlen(path_copy);
+
+    if (len >= 4 && strcmp(path_copy + len - 4, ".cpp") == 0) {
+        path_copy[len - 4] = '\0';
+    }
+
+    return nob_temp_sprintf("%s/%s.o", OBJ_DIR, path_copy);
 }
 
 bool ensure_build_dirs(void) {
@@ -200,7 +208,11 @@ void clean_build(void) {
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+#else
     NOB_GO_REBUILD_URSELF(argc, argv);
+#endif
+
     nob_shift_args(&argc, &argv); // pop ./nob
 
     // extract -jX flag and shift the remaining args down

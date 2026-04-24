@@ -1,0 +1,2 @@
+CompileFlags:
+  Add: [-I, C:/msys64/ucrt64/include]
