@@ -1,4 +1,5 @@
 #define NOB_IMPLEMENTATION
+#define NOB_EXPERIMENTAL_DELETE_OLD
 #include "nob.h"
 
 #define BUILD_DIR "build"
@@ -17,11 +18,6 @@ const char *debug_flags[] = {
     "-ggdb", "-O0",
     "-I", "src",
     "-I", "include",
-
-    // extrenal library for tui
-    "-I", "ext/FTXUI/include",
-    "-I", "ext/FTXUI/src",
-
     "-Wall", "-Wextra", "-std=c++20", "-pthread"
 };
 
@@ -29,13 +25,6 @@ const char *release_flags[] = {
     "-O3",
     "-I", "src",
     "-I", "include",
-
-    // extrenal library for tui
-    "-I", "ext/FTXUI/include",
-    "-I", "ext/FTXUI/src",
-
-
-
     "-Wall", "-Wextra", "-std=c++20", "-pthread"
 };
 
@@ -71,15 +60,20 @@ bool collect_sources(Nob_Walk_Entry entry) {
 }
 
 const char *get_obj_path(const char *src_path) {
-    return nob_temp_sprintf("%s/%s.o", OBJ_DIR, src_path);
+    char *path_copy = nob_temp_strdup(src_path);
+    size_t len = strlen(path_copy);
+
+    if (len >= 4 && strcmp(path_copy + len - 4, ".cpp") == 0) {
+        path_copy[len - 4] = '\0';
+    }
+
+    return nob_temp_sprintf("%s/%s.o", OBJ_DIR, path_copy);
 }
 
 bool ensure_build_dirs(void) {
     if (!nob_mkdir_if_not_exists(BUILD_DIR)) return false;
     if (!nob_mkdir_if_not_exists(OBJ_DIR)) return false;
     if (!nob_mkdir_if_not_exists(OBJ_DIR "/ext")) return false;
-    if (!nob_mkdir_if_not_exists(OBJ_DIR "/ext/FTXUI")) return false;
-    if (!nob_mkdir_if_not_exists(OBJ_DIR "/ext/FTXUI/src")) return false;
 
     return true;
 }
@@ -102,10 +96,10 @@ const char* detect_compiler() {
     #endif
 
     // check clang++
-    nob_cmd_append(&cmd, "/usr/bin/clang++", "--version");
+    nob_cmd_append(&cmd, "clang++", "--version");
     if (nob_cmd_run_opt(&cmd, opt)) {
         nob_cmd_free(cmd);
-        return "/usr/bin/clang++";
+        return "clang++";
     }
 
     // fallback: check g++
@@ -168,8 +162,6 @@ bool link_objects(const char *compiler) {
 bool build_project(const char *compiler, const char **flags, size_t flags_count, size_t threads) {
     if (!ensure_build_dirs()) return false;
     if (!nob_walk_dir("src", collect_sources)) return false;
-    if (!nob_walk_dir("ext/FTXUI/src", collect_sources)) return false;
-
 
     if (sources.count == 0) {
         nob_log(NOB_WARNING, "no '.cpp' files found in 'src/'");
@@ -208,7 +200,6 @@ bool build_project(const char *compiler, const char **flags, size_t flags_count,
 void clean_build(void) {
     nob_log(NOB_INFO, "cleaning....");
     if (!nob_walk_dir("src", collect_sources)) return;
-    if (!nob_walk_dir("ext/FTXUI/src", collect_sources)) return;
 
     for (size_t i = 0; i < sources.count; ++i) {
         nob_delete_file(get_obj_path(sources.items[i]));
@@ -217,7 +208,11 @@ void clean_build(void) {
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+#else
     NOB_GO_REBUILD_URSELF(argc, argv);
+#endif
+
     nob_shift_args(&argc, &argv); // pop ./nob
 
     // extract -jX flag and shift the remaining args down

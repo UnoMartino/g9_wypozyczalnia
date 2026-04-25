@@ -4,3 +4,7 @@ nob.exe
 nob.old
 compile_commands.json
 .DS_Store
+c_cpp_properties.json
+settings.json
+launch.json
+.vscode/
