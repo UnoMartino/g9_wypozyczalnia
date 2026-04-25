@@ -6,9 +6,14 @@
 #include "data/vehicle/Car.hpp"
 #include "data/vehicle/Motorcycle.hpp"
 #include "data/vehicle/Truck.hpp"
+#include "ftxui/component/component_base.hpp"
+#include "tui/View.hpp"
 
 #include <iostream>
 #include <string>
+
+// ====
+
 
 // ====
 
@@ -22,27 +27,65 @@ void Application::run() {
         }
     }
 
-    debugPrintVehicles();
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
 
-    m_auth.signUp("admin", "superTajneHaslo123");
+    // catch main_layout 'ESC' key -> application safely exits
+    m_view.constructFooter(m_state);
 
-    if (m_auth.signIn("client", "123")) {
-        // should not work
-    }
+    auto application_layout = Container::Vertical({
+        m_view.m_applicationView | flex,
+        m_view.getFooter()
+    });
 
-    if (m_auth.signIn("admin", "zleHaslo")) {
-        std::cout << "Should not print\n";
-    }
+    application_layout = ftxui::CatchEvent(application_layout, [this, &screen](ftxui::Event e) {
+        return handleEvents(e, screen);
+    });
 
-    if (m_auth.signIn("admin", "superTajneHaslo123")) {
-        std::cout << "Hello, World!\n";
-    }
-
-    while (m_state.isRunning) {
-
-    }
+    screen.Loop(application_layout);
 
 } // Application::run
+
+
+bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen) {
+
+    if (e == ftxui::Event::Escape) {
+        screen.ExitLoopClosure()();
+        // save the application data to files
+        shutdown();
+        return true;
+    }
+
+    if (e == ftxui::Event::Character('0')) {
+        m_state.currentFocus = FocusKind::TOPBAR;
+        m_view.getTopbar()->TakeFocus();
+        return true;
+    }
+
+    /*
+        temporary
+        focus here should be translated based on current Content of the Content Context
+        TODO! translate CONTEXT::KIND -> FOCUS::KIND
+        */
+    if (e == ftxui::Event::Character('1')) {
+        m_state.currentFocus = cktofk(m_state.getCurrentContext().contextId);
+        m_view.getContent()->TakeFocus();
+        return true;
+    }
+
+
+    FocusKind currentContext = m_state.currentFocus;
+    ShortcutMap shortcuts = getShortcutsForContext(currentContext);
+
+    for (const auto& [triggerEvent, action] : shortcuts) {
+        if (e == triggerEvent) {
+            if (action) action();
+            return true;
+        }
+    }
+
+    return false;
+} // Application::handleEvents
+
 
 std::unique_ptr<Vehicle> Application::parseVehicle(const json& item) {
     if (!item.contains("kind")) {
@@ -66,6 +109,36 @@ std::unique_ptr<Vehicle> Application::parseVehicle(const json& item) {
 void Application::shutdown() {
     m_state.isRunning = false;
 } // Application::shutdown
+
+
+ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
+    switch (focus) {
+
+        case FocusKind::TOPBAR: return {
+            {Event::Character('z'), []{
+                // show popup with sign in screen
+            }},
+
+            {Event::Character('Z'), []{
+                // show popup with sign up screen
+            }},
+
+            // optional, shows only when user is signed in
+            // {Event::Character('w'), []{ /* logout */ }},
+
+            {Event::Backspace, []{
+                // if possible, switch context to previous
+            }}
+        };
+
+        case FocusKind::HOME: return {
+
+        };
+
+    }
+
+    return {};
+} // Application::getShortcutsForContext
 
 
 // ==== DEBUG
