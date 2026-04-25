@@ -3,4 +3,5 @@ nob
 nob.exe
 nob.old
 compile_commands.json
+.vscode/*
 .DS_Store
