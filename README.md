@@ -1,6 +1,6 @@
 # Grupa 9 - Wypożyczalnia samochodów
 
----
+--- 
 
 ## Build
 
@@ -12,7 +12,7 @@ Skrypt sam pobiera pliki `.cpp` z katalogu `src/` i odtwarza strukturę w `build
 ./build.sh <action> <mode>
 ```
 ### Windows 
-TBD
+
 
 ### Flagi
 
@@ -40,3 +40,4 @@ do programu
 - Oskar Strzelecki
 - Sandra Wróblewska
 - Jakub Zarębski
+
