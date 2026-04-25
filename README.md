@@ -27,6 +27,10 @@ Przykład: `.\build.bat -j8 run debug`
 
 - `-jX` - tworzy X wątków i kompiluje pliki, co znacznie przyspiesza kompilowanie projektu
 
+### Flagi
+
+- `-jX` - tworzy X wątków i kompiluje pliki, co znacznie przyspiesza kompilowanie projektu
+
 ### Parametry 
 
 **action:**

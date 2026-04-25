@@ -1,0 +1,43 @@
+[
+  {
+    "id": 101,
+    "kind": 0,
+    "tier": 2,
+    "modelName": "Toyota Corolla",
+    "licensePlate": "WA 12345",
+    "mileage": 125000,
+    "needsService": false,
+    "onHold": false,
+    "dueDate": 0,
+    "passengerCapacity": 5,
+    "price": 100
+  },
+  {
+    "id": 102,
+    "kind": 1,
+    "tier": 1,
+    "modelName": "Yamaha MT-07",
+    "licensePlate": null,
+    "mileage": 12000,
+    "needsService": false,
+    "onHold": false,
+    "dueDate": 0,
+    "hasSidecar": false,
+    "price": 100
+
+  },
+  {
+    "id": 103,
+    "kind": 2,
+    "tier": 3,
+    "modelName": "Volvo FH16",
+    "licensePlate": "GD 98765",
+    "mileage": 850000,
+    "needsService": false,
+    "onHold": true,
+    "dueDate": 1710700000,
+    "maxPayloadKg": 24000,
+    "price": 100
+
+  }
+]

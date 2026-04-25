@@ -1,6 +1,10 @@
-#include <iostream>
+#include "Application.hpp"
 
+// start the main loop
 int main () {
-    std::cout << "Hello, world!\n";
+
+    Application app;
+    app.run();
+
     return 0;
 }
