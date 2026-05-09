@@ -61,9 +61,6 @@ static std::vector<std::unique_ptr<Vehicle>> loadVehicles();
 struct ApplicationState {
     std::vector<std::unique_ptr<Vehicle>> loadedVehicles = loadVehicles();       // store vehicle list from 'data.json'
 
-    std::vector<NavigationNode> navigationStack = {NavigationNode{HOME, "Home"}};
-    FocusKind currentFocus = FocusKind::HOME;
-
     bool isRunning = true;                                      // is application running
 
     bool isSignedIn = false;
