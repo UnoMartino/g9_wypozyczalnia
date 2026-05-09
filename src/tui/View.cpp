@@ -1,14 +1,17 @@
 #include "View.hpp"
+#include "Postcard.hpp"
+#include "RightPanel.hpp"
 
 #include "../Application.hpp"
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_options.hpp"
+#include "ftxui/component/screen_interactive.hpp"
 
 #include <ftxui/dom/elements.hpp>
 
 #include <vector>
-
 #include <iostream>
+
 
 // =====
 
@@ -45,40 +48,54 @@ View::View(ApplicationState& state) {
         }
     });
 
+    Components postcards;
+    for (const auto& vehicle: state.loadedVehicles) {
+        if (vehicle == nullptr) continue;
+
+        Vehicle* ptr = vehicle.get();
+
+        auto p = constructPostcardComponent(vehicle, [this, &state, ptr](){
+            state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
+            state.currentFocus = FocusKind::VEHICLE_DETAILS;
+            rebuildBreadcrumbs(state);
+        });
+        postcards.push_back(std::move(p));
+    }
+    auto postcard_container = Container::Vertical(std::move(postcards));
+
+    auto rightPanel = constructRightPanel(state);
+
+    auto contentComponents = Container::Horizontal({
+        postcard_container, rightPanel
+    });
+
     // temporary content logic
-    auto contentLogic = Renderer([&state] () -> Element {
+    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel] () -> Element {
         switch (state.getCurrentContext().contextId) {
-            case HOME:
-                return text("Lista pojazdów: [Toyota Corolla]");
+            case HOME: {
+                return hbox({
+                    postcard_container->Render(),
+                    rightPanel->Render(),
+                }) | flex | hcenter;
+            }
+
             case VEHICLE_DETAILS:
-                return text("Szczegóły: " + state.navigationStack.back().label);
+                return text("TODO");
             case VEHICLE_CLIENT_CONFIG:
-                return text("Konfiguracja opcji...");
+                return text("TODO");
             default:
                 return emptyElement();
         }
     });
 
-    // temp
-    auto nextButton = Button("Wejdź", [this, &state] {
-        if (state.getCurrentContext().contextId == HOME) {
-            state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, "Toyota Corolla"});
-            state.currentFocus = FocusKind::VEHICLE_DETAILS;
-        } else if (state.getCurrentContext().contextId == VEHICLE_DETAILS) {
-            state.navigationStack.push_back(NavigationNode{VEHICLE_CLIENT_CONFIG, "Konfiguruj"});
-            state.currentFocus = FocusKind::VEHICLE_CLIENT_CONFIG;
-        }
-
-        this->rebuildBreadcrumbs(state);
-    });
 
     m_topbar = Container::Horizontal({
         topbarLogic
     }) ;
 
     m_content = Container::Vertical({
-        contentLogic,
-        nextButton,
+        contentLogic | flex | hcenter,
+
     });
 
     auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar, [&state](){
@@ -101,20 +118,20 @@ View::View(ApplicationState& state) {
 void View::constructFooter(ApplicationState& state) {
 
     m_footer = Renderer([&state] {
-        Elements shortcuts = { text("[ESC] Wyjście ") | bold };
+        Elements shortcuts = { text("[ESC] Zamknij ") | bold };
 
         switch (state.currentFocus) {
             case FocusKind::HOME:
                 shortcuts.push_back(text("| [Enter] Detale pojazdu | [↑/↓] Wybierz "));
                 break;
             case FocusKind::VEHICLE_DETAILS:
-                shortcuts.push_back(text("| [Enter] Konfiguruj   "));
+                shortcuts.push_back(text("| [Enter] Konfiguruj | [Backspace] Powrót "));
                 break;
             case FocusKind::VEHICLE_CLIENT_CONFIG:
-                shortcuts.push_back(text("| [BRAK] "));
+                shortcuts.push_back(text("| [Backspace] Powrót  "));
                 break;
             case FocusKind::TOPBAR:
-                shortcuts.push_back(text("| [←/→] Wybierz "));
+                shortcuts.push_back(text("| [Backspace] Powrót | [←/→] Wybierz "));
                 break;
             default:
                 break;
@@ -165,11 +182,10 @@ void View::rebuildBreadcrumbs(ApplicationState& state) {
 
 // ====
 
-
 Component makePanel(std::string title, Component inner_content, std::function<bool()> is_focused_cb) {
     return Renderer(inner_content, [title, inner_content, is_focused_cb] {
 
-        auto content = inner_content->Render() | color(Color::Default);
+        auto content = inner_content->Render() | color(Color::White);
         auto win = window(text(title) | bold | center, content);
 
         if (is_focused_cb && is_focused_cb()) {
@@ -187,7 +203,7 @@ Component makePanel(Component title_component, Component inner_content, std::fun
     });
 
     return Renderer(logical_tree, [title_component, inner_content, logical_tree, is_focused_cb] {
-        auto content = inner_content->Render() | color(Color::Default);
+        auto content = inner_content->Render() | color(Color::White);
         auto win = window(title_component->Render() | bold, content);
 
         if (is_focused_cb && is_focused_cb()) {

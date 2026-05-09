@@ -14,6 +14,10 @@
 
 // configuration flags
 const char *debug_flags[] = {
+    "-std=c++17",
+#ifdef __APPLE__
+    "-mmacosx-version-min=12.0",
+#endif
     "-ggdb", "-O0",
     "-I", "src",
     "-I", "include",
@@ -22,10 +26,14 @@ const char *debug_flags[] = {
     "-I", "ext/FTXUI/include",
     "-I", "ext/FTXUI/src",
 
-    "-Wall", "-Wextra", "-std=c++20", "-pthread"
+    "-Wall", "-Wextra","-pthread"
 };
 
 const char *release_flags[] = {
+    "-std=c++17",
+#ifdef __APPLE__
+    "-mmacosx-version-min=12.0",
+#endif
     "-O3",
     "-I", "src",
     "-I", "include",
@@ -34,9 +42,7 @@ const char *release_flags[] = {
     "-I", "ext/FTXUI/include",
     "-I", "ext/FTXUI/src",
 
-
-
-    "-Wall", "-Wextra", "-std=c++20", "-pthread"
+    "-Wall", "-Wextra", "-pthread"
 };
 
 Nob_File_Paths sources = {0};
@@ -95,11 +101,11 @@ const char* detect_compiler() {
     Nob_Cmd_Opt opt = {0};
 
     // set error path
-    #ifdef _WIN32
+#ifdef _WIN32
     opt.stdout_path = "NUL"; opt.stderr_path = "NUL";
-    #else
+#else
     opt.stdout_path = "/dev/null"; opt.stderr_path = "/dev/null";
-    #endif
+#endif
 
     // check clang++
     nob_cmd_append(&cmd, "/usr/bin/clang++", "--version");
@@ -141,9 +147,20 @@ bool compile_source(const char *compiler, const char *src_path, const char **fla
     return success;
 }
 
-bool link_objects(const char *compiler) {
+bool link_objects(const char *compiler, const char **flags, size_t flags_count) {
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, compiler, "-o", EXEC_PATH);
+    nob_cmd_append(&cmd, compiler);
+
+    // Pass essential linking flags (standard, target OS, threading)
+    for (size_t i = 0; i < flags_count; ++i) {
+        if (strncmp(flags[i], "-std=", 5) == 0 ||
+            strncmp(flags[i], "-mmacosx", 8) == 0 ||
+            strcmp(flags[i], "-pthread") == 0) {
+            nob_cmd_append(&cmd, flags[i]);
+        }
+    }
+
+    nob_cmd_append(&cmd, "-o", EXEC_PATH);
 
     bool needs_linking = false;
     for (size_t i = 0; i < sources.count; ++i) {
@@ -200,9 +217,10 @@ bool build_project(const char *compiler, const char **flags, size_t flags_count,
     }
 
     // flush any remaining compilation jobs before moving to linking
+    // flush any remaining compilation jobs before moving to linking
     if (!nob_procs_flush(&procs)) return false;
 
-    return link_objects(compiler);
+    return link_objects(compiler, flags, flags_count);
 }
 
 void clean_build(void) {

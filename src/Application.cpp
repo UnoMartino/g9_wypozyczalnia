@@ -1,47 +1,44 @@
 #include "Application.hpp"
 
-#include "data/Loader.hpp"
 
+// #include "data/Vehicle.hpp"
 #include "data/vehicle/Vehicle.hpp"
-#include "data/vehicle/Car.hpp"
-#include "data/vehicle/Motorcycle.hpp"
-#include "data/vehicle/Truck.hpp"
+
 #include "ftxui/component/component_base.hpp"
 #include "tui/View.hpp"
 
 #include <iostream>
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 // ====
 
-
 // ====
+
+Application::Application() : m_view(m_state) {
+
+
+
+    m_state.currentCalendarState = m_state.systemCalendarState;
+}
 
 // load the application state and data
 void Application::run() {
-
-    json data = loadFile("./data.json");
-    for (const auto& item : data) {
-        if (auto vehicle = parseVehicle(item)) {
-            m_state.loadedVehicles.push_back(std::move(vehicle));
-        }
-    }
-
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
 
     // catch main_layout 'ESC' key -> application safely exits
     m_view.constructFooter(m_state);
 
     auto application_layout = Container::Vertical({
-        m_view.m_applicationView | flex,
+        m_view.m_applicationView | ftxui::flex,
         m_view.getFooter()
     });
 
-    application_layout = ftxui::CatchEvent(application_layout, [this, &screen](ftxui::Event e) {
-        return handleEvents(e, screen);
+    application_layout = ftxui::CatchEvent(application_layout, [this](ftxui::Event e) {
+        return handleEvents(e, m_state.screen);
     });
 
-    screen.Loop(application_layout);
+    m_state.screen.Loop(application_layout);
 
 } // Application::run
 
@@ -61,17 +58,12 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         return true;
     }
 
-    /*
-        temporary
-        focus here should be translated based on current Content of the Content Context
-        TODO! translate CONTEXT::KIND -> FOCUS::KIND
-        */
+
     if (e == ftxui::Event::Character('1')) {
         m_state.currentFocus = cktofk(m_state.getCurrentContext().contextId);
         m_view.getContent()->TakeFocus();
         return true;
     }
-
 
     FocusKind currentContext = m_state.currentFocus;
     ShortcutMap shortcuts = getShortcutsForContext(currentContext);
@@ -87,22 +79,6 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 } // Application::handleEvents
 
 
-std::unique_ptr<Vehicle> Application::parseVehicle(const json& item) {
-    if (!item.contains("kind")) {
-        std::cerr << "Missing kind\n";
-        return nullptr;
-    }
-
-    auto kind = item.at("kind").get<VehicleKind>();
-
-    switch (kind) {
-        case VehicleKind::Car: { return Car::fromJSON(item); }
-        case VehicleKind::Motorcycle: { return Motorcycle::fromJSON(item); }
-        case VehicleKind::Truck: { return Truck::fromJSON(item); }
-
-        default: return nullptr;
-    }
-} // Application::parseVehicle
 
 // saves the application state and data
 // prepares to exit the application
@@ -112,33 +88,46 @@ void Application::shutdown() {
 
 
 ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
+
+    // backspace is always the same
+    ShortcutMap shortcuts = {
+        {Event::Backspace, [this] {
+            if (m_state.navigationStack.size() > 1) {
+                m_state.navigationStack.pop_back();
+                m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
+
+                m_view.rebuildBreadcrumbs(m_state);
+            }
+        }},
+    };
+
     switch (focus) {
+        case FocusKind::TOPBAR: {
+            shortcuts.insert({
+                {Event::Character('z'), []{
+                    // show popup with sign in screen
+                }},
 
-        case FocusKind::TOPBAR: return {
-            {Event::Character('z'), []{
-                // show popup with sign in screen
-            }},
+                {Event::Character('Z'), []{
+                    // show popup with sign up screen
+                }},
+            });
+        } break;
 
-            {Event::Character('Z'), []{
-                // show popup with sign up screen
-            }},
+        case FocusKind::HOME: {
+            shortcuts.insert({});
+        } break;
 
-            // optional, shows only when user is signed in
-            // {Event::Character('w'), []{ /* logout */ }},
-
-            {Event::Backspace, []{
-                // if possible, switch context to previous
-            }}
-        };
-
-        case FocusKind::HOME: return {
-
-        };
+        case FocusKind::VEHICLE_DETAILS: {
+            shortcuts.insert({});
+        } break;
 
     }
 
-    return {};
+    return shortcuts;
 } // Application::getShortcutsForContext
+
+
 
 
 // ==== DEBUG

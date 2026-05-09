@@ -13,6 +13,17 @@ using json = nlohmann::json;
 enum class VehicleTier { Premium = 1, Standard, Economy, Budget, Basic, Utility };
 enum class VehicleKind { Car, Motorcycle, Truck };
 
+static inline std::string tierToString(VehicleTier t) {
+    switch (t) {
+        case VehicleTier::Premium: return "Premium";
+        case VehicleTier::Standard: return "Standard";
+        case VehicleTier::Economy: return "Economy";
+        case VehicleTier::Budget: return "Budget";
+        case VehicleTier::Basic: return "Basic";
+        case VehicleTier::Utility: return "Utility";
+    }
+}
+
 // ====
 
 struct VehicleData {
@@ -28,6 +39,8 @@ struct VehicleData {
 
     int64_t dueDate;                        // final rent day
     uint32_t price = 0;
+
+    int passengerCapacity = 0;
 }; // VehicleData
 
 class Vehicle {
@@ -40,7 +53,12 @@ public:
     virtual ~Vehicle() = default;
 
     virtual void printInfo() const = 0;
+    virtual std::map<std::string, std::string> getDetails() const = 0;
 
+    VehicleKind getKind() { return m_commonData.kind; }
+    VehicleTier getTier() { return m_commonData.tier; }
+    uint32_t getPrice() { return m_commonData.price; }
+    std::string getName() { return m_commonData.modelName; }
 private:
 
 }; // Vehicle

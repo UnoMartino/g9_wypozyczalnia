@@ -25,7 +25,6 @@ private:
 
     Component m_breadcrumbs;
 
-    void rebuildBreadcrumbs(ApplicationState& state);
 
 public:
 
@@ -40,5 +39,7 @@ public:
     Component getTopbar() { return m_topbar; }
 
     Component getFooter() { return m_footer; }
+
+    void rebuildBreadcrumbs(ApplicationState& state);
 
 }; // View

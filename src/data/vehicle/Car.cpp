@@ -21,7 +21,7 @@ std::unique_ptr<Car> Car::fromJSON(const json& j) {
     data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
 
-    data.passengerCapacity = j.at("passengerCapacity").get<int>();
+    //data.passengerCapacity = j.at("passengerCapacity").get<int>();
 
     return std::make_unique<Car>(std::move(data));
 } // Car::fromJSON
@@ -34,7 +34,7 @@ void Car::printInfo() const {
     std::cout << "Rejestracja: " << m_commonData.licensePlate.value_or("BRAK") << "\n";
 
     std::cout << "Przebieg: " << m_commonData.mileage << " km\n"
-              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n"
-              << "Miejsca: " << m_passengerCapacity << " osob\n";
+              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n";
+              //<< "Miejsca: " << m_passengerCapacity << " osob\n";
 
 } // Car::printInfo

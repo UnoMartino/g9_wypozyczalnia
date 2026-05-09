@@ -6,21 +6,51 @@
 
 // ====
 
+enum TrailerType {
+    Rerfrigerated,
+    Tank,
+    Dry,
+};
+
 struct TruckData {
     VehicleData base;
     uint32_t maxPayloadKg = 0;
+
+    TrailerType trailerType;
+
+    bool hasSleeperCab = false;
 };
 
 class Truck: public Vehicle {
 private:
-    uint32_t m_maxPayloadKg;
+    uint32_t m_maxPayloadKg = 0;
+    bool m_hasSleeperCab = false;
+
+    std::string m_trailerType = "Unknown";
+
+    std::string typeToString(TrailerType t) const {
+        switch (t) {
+            case Rerfrigerated: return "Chłodnia";
+            case Tank: return "Cysterna";
+            case Dry: return "TIR";
+            default: return "BŁĄD";
+        }
+    }
 
 public:
-    Truck(TruckData data) : Vehicle(std::move(data.base)), m_maxPayloadKg(data.maxPayloadKg) {}
+    Truck(TruckData data) : Vehicle(std::move(data.base)), m_maxPayloadKg(data.maxPayloadKg),
+    m_hasSleeperCab(data.hasSleeperCab), m_trailerType(typeToString(data.trailerType)) {}
 
     static std::unique_ptr<Truck> fromJSON(const json& j);
 
     void printInfo() const override;
 
+    std::map<std::string, std::string> getDetails() const override {
+        return {
+            {"trailerType", m_trailerType},
+            {"maxPayloadKg", std::to_string(m_maxPayloadKg) + "kg"},
+            {"hasSleeperCab", m_hasSleeperCab ? "Posiada" : "Nie posiada"},
+        };
+    };
 
 }; // Truck

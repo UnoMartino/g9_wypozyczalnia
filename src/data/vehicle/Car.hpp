@@ -6,21 +6,56 @@
 
 // ====
 
+enum BodyStyle {
+    Sedan, SUV, StateWagon, Hatchback, None
+};
+
 struct CarData {
     VehicleData base;
-    int passengerCapacity = 0;
+
+    int trunkCapacityLiters = 0;
+
+    BodyStyle bodyStyle = None;
+
+    bool isElectric = false;
 }; // CarData
 
 class Car: public Vehicle {
 private:
 
-    int m_passengerCapacity;
+    int m_trunkCapacityLiters = 0;
+
+    std::string m_bodyStyle = "Unknown";
+
+    bool m_isElectric = false;
+
+    std::string styleToString(BodyStyle s) const {
+        switch (s) {
+            case Sedan: return "Sedan";
+            case SUV: return "SUV";
+            case StateWagon: return "Kombi";
+            case Hatchback: return "Hatchback";
+            default: return "Unknown";
+        }
+    }
 
 public:
-    Car(CarData data) : Vehicle(std::move(data.base)), m_passengerCapacity(data.passengerCapacity) {}
+    Car(CarData data) : Vehicle(std::move(data.base)),
+    m_trunkCapacityLiters(data.trunkCapacityLiters),
+    m_bodyStyle(styleToString(data.bodyStyle)),
+    m_isElectric(data.isElectric)
+    {}
 
     static std::unique_ptr<Car> fromJSON(const json& j);
 
     void printInfo() const override;
+
+    std::map<std::string, std::string> getDetails() const override {
+        return {
+            {"bodyStyle", m_bodyStyle},
+            {"isElectric", m_isElectric ? "Tak" : "Nie"},
+            {"trunkCapacityLiters", std::to_string(m_trunkCapacityLiters) + " L"}
+        };
+    };
 
 }; // Car
