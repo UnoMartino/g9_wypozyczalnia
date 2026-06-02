@@ -1,7 +1,9 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "data/Loader.hpp"
@@ -25,6 +27,7 @@ struct FtxuiEventHash {
 };
 
 using ShortcutMap = std::unordered_map<ftxui::Event, std::function<void()>, FtxuiEventHash>;
+using DateRange = std::pair<std::chrono::system_clock::time_point, std::chrono::system_clock::time_point>;
 
 // ====
 
@@ -32,7 +35,7 @@ enum class FocusKind {
     TOPBAR,
     HOME,
     VEHICLE_DETAILS,
-    VEHICLE_CLIENT_CONFIG,
+    VEHICLE_FORM,
     ADMIN_DASHBOARD,
     RIGHTBAR,
 };
@@ -41,7 +44,7 @@ enum NavigationContextKind {
     NONE,
     HOME,
     VEHICLE_DETAILS,
-    VEHICLE_CLIENT_CONFIG,
+    VEHICLE_FORM,
     ADMIN_DASHBOARD,
 };
 
@@ -151,7 +154,7 @@ static FocusKind cktofk(NavigationContextKind ck) {
         case NONE: abort();
         case HOME: return FocusKind::HOME;
         case VEHICLE_DETAILS: return FocusKind::VEHICLE_DETAILS;
-        case VEHICLE_CLIENT_CONFIG: return FocusKind::VEHICLE_CLIENT_CONFIG;
+        case VEHICLE_FORM: return FocusKind::VEHICLE_FORM;
         case ADMIN_DASHBOARD: return FocusKind::ADMIN_DASHBOARD;
     }
 

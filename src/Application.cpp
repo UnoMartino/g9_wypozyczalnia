@@ -18,8 +18,6 @@
 
 Application::Application() : m_view(m_state) {
 
-
-
     m_state.currentCalendarState = m_state.systemCalendarState;
 }
 
@@ -91,14 +89,7 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
 
     // backspace is always the same
     ShortcutMap shortcuts = {
-        {Event::Backspace, [this] {
-            if (m_state.navigationStack.size() > 1) {
-                m_state.navigationStack.pop_back();
-                m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
 
-                m_view.rebuildBreadcrumbs(m_state);
-            }
-        }},
     };
 
     switch (focus) {
@@ -111,15 +102,45 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
                 {Event::Character('Z'), []{
                     // show popup with sign up screen
                 }},
+
+                {Event::Backspace, [this] {
+                    if (m_state.navigationStack.size() > 1) {
+                        m_state.navigationStack.pop_back();
+                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
+
+                        m_view.rebuildBreadcrumbs(m_state);
+                    }
+                }},
             });
         } break;
 
         case FocusKind::HOME: {
-            shortcuts.insert({});
+            shortcuts.insert({
+
+                {Event::Backspace, [this] {
+                    if (m_state.navigationStack.size() > 1) {
+                        m_state.navigationStack.pop_back();
+                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
+
+                        m_view.rebuildBreadcrumbs(m_state);
+                    }
+                }},
+
+            });
         } break;
 
         case FocusKind::VEHICLE_DETAILS: {
-            shortcuts.insert({});
+            shortcuts.insert({
+
+                {Event::Backspace, [this] {
+                    if (m_state.navigationStack.size() > 1) {
+                        m_state.navigationStack.pop_back();
+                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
+
+                        m_view.rebuildBreadcrumbs(m_state);
+                    }
+                }},
+            });
         } break;
 
     }

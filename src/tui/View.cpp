@@ -1,4 +1,5 @@
 #include "View.hpp"
+#include "Concfiguration.hpp"
 #include "Postcard.hpp"
 #include "RightPanel.hpp"
 
@@ -9,6 +10,7 @@
 
 #include <ftxui/dom/elements.hpp>
 
+#include <memory>
 #include <vector>
 #include <iostream>
 
@@ -49,14 +51,28 @@ View::View(ApplicationState& state) {
     });
 
     Components postcards;
+    Component configuration = Container::Vertical({});
     for (const auto& vehicle: state.loadedVehicles) {
         if (vehicle == nullptr) continue;
 
         Vehicle* ptr = vehicle.get();
 
-        auto p = constructPostcardComponent(vehicle, [this, &state, ptr](){
+        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration](){
+            configuration->DetachAllChildren();
+            configuration->Add(constructConfigurationForm(ptr, [&state](std::shared_ptr<Order> finalOrder) {
+
+                // perform order submission
+                // save the order to database (later json file)
+
+
+
+                state.currentFocus = FocusKind::VEHICLE_DETAILS;
+            }));
+            configuration->TakeFocus();
+
+
             state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
-            state.currentFocus = FocusKind::VEHICLE_DETAILS;
+            state.currentFocus = FocusKind::VEHICLE_FORM;
             rebuildBreadcrumbs(state);
         });
         postcards.push_back(std::move(p));
@@ -65,12 +81,31 @@ View::View(ApplicationState& state) {
 
     auto rightPanel = constructRightPanel(state);
 
-    auto contentComponents = Container::Horizontal({
-        postcard_container, rightPanel
+    auto homeView = Container::Horizontal({
+        postcard_container,
+        rightPanel
     });
 
-    // temporary content logic
-    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel] () -> Element {
+    // 2. Wrap them in Maybe containers tied to your state.
+    // This tells the engine to safely mount/unmount them from the event loop.
+
+    auto safeHome = Maybe(homeView, [&state] {
+        return state.getCurrentContext().contextId == HOME;
+    });
+
+    auto safeConfig = Maybe(configuration, [&state] {
+        return state.getCurrentContext().contextId == VEHICLE_DETAILS;
+    });
+
+    // 3. THIS IS THE MOST IMPORTANT PART.
+    // Both safe wrappers must be inside the base tree!
+    auto contentComponents = Container::Horizontal({
+        safeHome,
+        safeConfig
+    });
+
+    // 4. Now the Renderer is perfectly safe because the components are actually in the tree.
+    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
                 return hbox({
@@ -80,9 +115,11 @@ View::View(ApplicationState& state) {
             }
 
             case VEHICLE_DETAILS:
+                return configuration->Render() | flex;
+
+            case VEHICLE_FORM:
                 return text("TODO");
-            case VEHICLE_CLIENT_CONFIG:
-                return text("TODO");
+
             default:
                 return emptyElement();
         }
@@ -122,16 +159,16 @@ void View::constructFooter(ApplicationState& state) {
 
         switch (state.currentFocus) {
             case FocusKind::HOME:
-                shortcuts.push_back(text("| [Enter] Detale pojazdu | [↑/↓] Wybierz "));
+                shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj "));
                 break;
             case FocusKind::VEHICLE_DETAILS:
-                shortcuts.push_back(text("| [Enter] Konfiguruj | [Backspace] Powrót "));
+                shortcuts.push_back(text("| [Backspace] Powrót "));
                 break;
-            case FocusKind::VEHICLE_CLIENT_CONFIG:
-                shortcuts.push_back(text("| [Backspace] Powrót  "));
+            case FocusKind::VEHICLE_FORM:
+                shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj "));
                 break;
             case FocusKind::TOPBAR:
-                shortcuts.push_back(text("| [Backspace] Powrót | [←/→] Wybierz "));
+                shortcuts.push_back(text("| [Backspace] Powrót | [←/→] Nawiguj "));
                 break;
             default:
                 break;

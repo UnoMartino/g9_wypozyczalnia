@@ -52,9 +52,9 @@ public:
 
     std::map<std::string, std::string> getDetails() const override {
         return {
-            {"bodyStyle", m_bodyStyle},
-            {"isElectric", m_isElectric ? "Tak" : "Nie"},
-            {"trunkCapacityLiters", std::to_string(m_trunkCapacityLiters) + " L"}
+            {"Nadwozie", m_bodyStyle},
+            {"Pojemność bagażnika", std::to_string(m_trunkCapacityLiters) + " L"},
+            {"Pojazd elektryczny", m_isElectric ? "Tak" : "Nie"},
         };
     };
 
