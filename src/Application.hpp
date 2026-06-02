@@ -11,6 +11,7 @@
 #include "data/vehicle/Car.hpp"
 #include "data/vehicle/Truck.hpp"
 #include "data/vehicle/Motorcycle.hpp"
+#include "data/Order.hpp"
 
 #include "ftxui/component/component_base.hpp"
 #include "ftxui/component/screen_interactive.hpp"
@@ -27,7 +28,6 @@ struct FtxuiEventHash {
 };
 
 using ShortcutMap = std::unordered_map<ftxui::Event, std::function<void()>, FtxuiEventHash>;
-using DateRange = std::pair<std::chrono::system_clock::time_point, std::chrono::system_clock::time_point>;
 
 // ====
 
@@ -53,16 +53,19 @@ struct NavigationNode {
     std::string label;
 };
 
-
 struct CalendarState {
     int year;
     int month;
 };
 
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles();
+static std::vector<Order> loadOrders();
 // stores application state data
 struct ApplicationState {
     std::vector<std::unique_ptr<Vehicle>> loadedVehicles = loadVehicles();       // store vehicle list from 'data.json'
+
+    std::unordered_map<int, std::vector<DateRange>> reservations;
+    std::vector<Order> orders = loadOrders();
 
     bool isRunning = true;                                      // is application running
 
@@ -117,6 +120,18 @@ struct ApplicationState {
                 rangeEnd = clickedDate;
             }
         }
+    }
+
+    std::vector<DateRange> getReservations(int id) {
+        auto it = reservations.find(id);
+        if (it != reservations.end()) {
+            return it->second;
+        }
+        return {};
+    }
+
+    void addReservation(int id, DateRange range) {
+        reservations[id].push_back(range);
     }
 
 }; // ApplicationState
@@ -180,6 +195,10 @@ static std::unique_ptr<Vehicle> parseVehicle(const json& item) {
 
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
     json data = loadFile("./data.json");
+    if (data.is_null() || data.empty()) {
+        return {};
+    }
+
     std::vector<std::unique_ptr<Vehicle>> vehicles;
     for (const auto& item : data) {
         if (auto vehicle = parseVehicle(item)) {
@@ -189,3 +208,20 @@ static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
 
     return vehicles;
 } // loadVehicles
+
+static std::vector<Order> loadOrders() {
+    json data = loadFile("./orders.json");
+    if (data.is_null() || data.empty()) {
+        return {};
+    }
+
+    std::vector<Order> orders;
+    for (const auto& item : data) {
+
+        Order order;
+        from_json(item, order);
+        orders.push_back(std::move(order));
+    }
+
+    return orders;
+}

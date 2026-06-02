@@ -1,5 +1,5 @@
 #include "View.hpp"
-#include "Concfiguration.hpp"
+#include "Configuration.hpp"
 #include "Postcard.hpp"
 #include "RightPanel.hpp"
 
@@ -59,17 +59,11 @@ View::View(ApplicationState& state) {
 
         auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration](){
             configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(ptr, [&state](std::shared_ptr<Order> finalOrder) {
-
-                // perform order submission
-                // save the order to database (later json file)
-
-
-
+            configuration->Add(constructConfigurationForm(state, ptr, [&state](std::shared_ptr<Order> finalOrder) {
+                state.orders.push_back(*finalOrder);
                 state.currentFocus = FocusKind::VEHICLE_DETAILS;
             }));
             configuration->TakeFocus();
-
 
             state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
             state.currentFocus = FocusKind::VEHICLE_FORM;
@@ -86,7 +80,6 @@ View::View(ApplicationState& state) {
         rightPanel
     });
 
-    // 2. Wrap them in Maybe containers tied to your state.
     // This tells the engine to safely mount/unmount them from the event loop.
 
     auto safeHome = Maybe(homeView, [&state] {
@@ -97,14 +90,12 @@ View::View(ApplicationState& state) {
         return state.getCurrentContext().contextId == VEHICLE_DETAILS;
     });
 
-    // 3. THIS IS THE MOST IMPORTANT PART.
     // Both safe wrappers must be inside the base tree!
     auto contentComponents = Container::Horizontal({
         safeHome,
         safeConfig
     });
 
-    // 4. Now the Renderer is perfectly safe because the components are actually in the tree.
     auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
@@ -139,7 +130,6 @@ View::View(ApplicationState& state) {
         return state.currentFocus == FocusKind::TOPBAR;
     });
     auto contentPanel = makePanel(Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
-        // TODO! translate CONTEXT::KIND -> FOCUS::KIND
         return state.currentFocus == cktofk(state.getCurrentContext().contextId);
     });
 

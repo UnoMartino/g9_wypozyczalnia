@@ -2,6 +2,7 @@
 
 
 // #include "data/Vehicle.hpp"
+#include "data/Order.hpp"
 #include "data/vehicle/Vehicle.hpp"
 
 #include "ftxui/component/component_base.hpp"
@@ -17,7 +18,6 @@
 // ====
 
 Application::Application() : m_view(m_state) {
-
     m_state.currentCalendarState = m_state.systemCalendarState;
 }
 
@@ -45,7 +45,6 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 
     if (e == ftxui::Event::Escape) {
         screen.ExitLoopClosure()();
-        // save the application data to files
         shutdown();
         return true;
     }
@@ -81,6 +80,10 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 // saves the application state and data
 // prepares to exit the application
 void Application::shutdown() {
+
+    //
+    saveOrders(m_state.orders);
+
     m_state.isRunning = false;
 } // Application::shutdown
 
