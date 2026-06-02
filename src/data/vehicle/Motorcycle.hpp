@@ -19,7 +19,8 @@ private:
     bool m_requiresFullLicense = false;
     bool m_hasLuggagePanniers = false;
 public:
-    Motorcycle(MotorcycleData data) : Vehicle(std::move(data.base)), m_hasSidecar(data.hasSidecar) {}
+    Motorcycle(MotorcycleData data) : Vehicle(std::move(data.base)), m_hasSidecar(data.hasSidecar),
+        m_requiresFullLicense(data.requiresFullLicense), m_hasLuggagePanniers(data.hasLuggagePanniers) {}
 
     static std::unique_ptr<Motorcycle> fromJSON(const json& j);
 
@@ -27,9 +28,9 @@ public:
 
     std::map<std::string, std::string> getDetails() const override {
         return {
-            {"hasSidecar", m_hasSidecar ? "Posiada" : "Nie posiada"},
-            {"requiresFullLicense", m_requiresFullLicense ? "Wymaga" : "Nie wymaga"},
-            {"hasLuggagePanniers", m_hasLuggagePanniers ? "Posiada" : "Nie posiada"},
+            {"Wózek", m_hasSidecar ? "Posiada" : "Nie posiada"},
+            {"Prawo jazdy kat. A", m_requiresFullLicense ? "Wymaga" : "Nie wymaga"},
+            {"Schowki", m_hasLuggagePanniers ? "Posiada" : "Nie posiada"},
         };
     };
 

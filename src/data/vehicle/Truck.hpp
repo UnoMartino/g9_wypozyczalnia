@@ -47,9 +47,9 @@ public:
 
     std::map<std::string, std::string> getDetails() const override {
         return {
-            {"trailerType", m_trailerType},
-            {"maxPayloadKg", std::to_string(m_maxPayloadKg) + "kg"},
-            {"hasSleeperCab", m_hasSleeperCab ? "Posiada" : "Nie posiada"},
+            {"Typ naczepy", m_trailerType},
+            {"Maksymalna masa", std::to_string(m_maxPayloadKg) + "kg"},
+            {"Kabina sypialniana", m_hasSleeperCab ? "Posiada" : "Nie posiada"},
         };
     };
 
