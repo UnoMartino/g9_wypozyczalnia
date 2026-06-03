@@ -2,6 +2,7 @@
 #include "Configuration.hpp"
 #include "Postcard.hpp"
 #include "RightPanel.hpp"
+#include "OrderSummary.hpp"
 
 #include "../Application.hpp"
 #include "ftxui/component/component.hpp"
@@ -52,16 +53,30 @@ View::View(ApplicationState& state) {
 
     Components postcards;
     Component configuration = Container::Vertical({});
+    Component orderSummary = Container::Vertical({});
+
     for (const auto& vehicle: state.loadedVehicles) {
         if (vehicle == nullptr) continue;
 
         Vehicle* ptr = vehicle.get();
 
-        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration](){
+        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration, orderSummary](){
             configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(state, ptr, [&state](std::shared_ptr<Order> finalOrder) {
+            configuration->Add(constructConfigurationForm(state, ptr, [this, &state, orderSummary](std::shared_ptr<Order> finalOrder) {
                 state.orders.push_back(*finalOrder);
-                state.currentFocus = FocusKind::VEHICLE_DETAILS;
+                saveOrders(state.orders);
+
+                orderSummary->DetachAllChildren();
+                orderSummary->Add(constructOrderSummary(state, finalOrder, [this, &state]{
+                    state.navigationStack.clear();
+                    state.navigationStack.push_back({HOME, "Home"});
+                    state.currentFocus = FocusKind::HOME;
+                    this->rebuildBreadcrumbs(state);
+                }));
+
+                state.navigationStack.push_back(NavigationNode{ORDER_SUMMARY, "Potwierdzenie"});
+                state.currentFocus = FocusKind::ORDER_SUMMARY;
+                this->rebuildBreadcrumbs(state);
             }));
             configuration->TakeFocus();
 
@@ -90,13 +105,18 @@ View::View(ApplicationState& state) {
         return state.getCurrentContext().contextId == VEHICLE_DETAILS;
     });
 
+    auto safeSummary = Maybe(orderSummary, [&state] {
+        return state.getCurrentContext().contextId == ORDER_SUMMARY;
+    });
+
     // Both safe wrappers must be inside the base tree!
     auto contentComponents = Container::Horizontal({
         safeHome,
-        safeConfig
+        safeConfig,
+        safeSummary
     });
 
-    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration] () -> Element {
+    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
                 return hbox({
@@ -107,6 +127,9 @@ View::View(ApplicationState& state) {
 
             case VEHICLE_DETAILS:
                 return configuration->Render() | flex;
+
+            case ORDER_SUMMARY:
+                return orderSummary->Render() | flex;
 
             case VEHICLE_FORM:
                 return text("TODO");
@@ -156,6 +179,9 @@ void View::constructFooter(ApplicationState& state) {
                 break;
             case FocusKind::VEHICLE_FORM:
                 shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj "));
+                break;
+            case FocusKind::ORDER_SUMMARY:
+                shortcuts.push_back(text("| [Enter] Powrót do menu "));
                 break;
             case FocusKind::TOPBAR:
                 shortcuts.push_back(text("| [Backspace] Powrót | [←/→] Nawiguj "));
