@@ -19,6 +19,11 @@
 
 Application::Application() : m_view(m_state) {
     m_state.currentCalendarState = m_state.systemCalendarState;
+
+    // populate reservations from loaded orders
+    for (const auto& order : m_state.orders) {
+        m_state.addReservation(order.vehicleId, order.rentRange);
+    }
 }
 
 // load the application state and data

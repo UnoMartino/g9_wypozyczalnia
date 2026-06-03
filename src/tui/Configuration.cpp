@@ -65,16 +65,16 @@ Component constructSummary(ApplicationState& state, Vehicle* vehicle, std::share
             return stream.str();
         };
 
-        double rentPrice = calculateRentCost(vehicle->getPrice(), order->rentRange.duration(), vehicle->getTier());
-        double insurancePrice = order->wantsInsurance ? 50.00 : 0.00;
-        double mileageCost = calculateMileageLimitCost(order->mileageTier, order->rentRange.duration());
+        double rentPrice = (days > 0) ? calculateRentCost(vehicle->getPrice(), days, vehicle->getTier()) : 0.0;
+        double insurancePrice = (order->wantsInsurance && days > 0) ? 50.00 : 0.00;
+        double mileageCost = (days > 0) ? calculateMileageLimitCost(order->mileageTier, days) : 0.0;
         double totalPrice = vehicle->getPrice() + rentPrice + insurancePrice + mileageCost;
 
         auto content = vbox({
             text("Koszty:") | bold,
             separator(),
             hbox({ text("Zaliczka: "), filler(), text(formatPrice(vehicle->getPrice()) + " PLN") }),
-            hbox({ text("Wynajem (" + std::to_string(days) + " dni): "), filler(), text(formatPrice(rentPrice) + " PLN") }),
+            hbox({ text("Wynajem (" + std::to_string(days) + (days == 1 ? " dzień" : " dni") + "): "), filler(), text(formatPrice(rentPrice) + " PLN") }),
             hbox({ text("Przebieg: "), filler(), text(formatPrice(mileageCost) + " PLN") }),
 
             hbox({ text("Ubezpieczenie: "), filler(), text(formatPrice(insurancePrice) + " PLN") }),
@@ -98,6 +98,8 @@ Component constructSummary(ApplicationState& state, Vehicle* vehicle, std::share
 Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action) {
 
     auto order = std::make_shared<Order>();
+    order->vehicleId = vehicle->getId();
+
     auto isCalendarOpen = std::make_shared<bool>(false);
     auto errorMessage = std::make_shared<std::string>("");
 
@@ -110,7 +112,7 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
         *isCalendarOpen = true;
     }, ButtonOption::Ascii());
 
-    auto submitBtn = Button("Potwierdź i zapłać", [action, order, errorMessage]{
+    auto submitBtn = Button("Potwierdź i zapłać", [&state, vehicle, action, order, errorMessage]{
         if (order->firstName.empty() || order->lastName.empty() || order->email.empty()) {
             *errorMessage = "Wypełnij wszystkie pola tekstowe";
             return;
@@ -121,8 +123,18 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
             return;
         }
 
-        // Opcjonalnie: upewnij się, że user wybrał też daty
-        // if (order->rangeStart == order->rangeEnd) { ... }
+        if (!state.rangeStart || !state.rangeEnd) {
+            *errorMessage = "Wybierz termin wynajmu";
+            return;
+        }
+
+        auto reservations = state.getReservations(vehicle->getId());
+        for (const auto& res : reservations) {
+            if (order->rentRange.start <= res.end && order->rentRange.end >= res.start) {
+                *errorMessage = "Wybrany termin koliduje z inną rezerwacją";
+                return;
+            }
+        }
 
         *errorMessage = ""; // Czysto, puszczamy akcję dalej
         action(order);
@@ -185,7 +197,7 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
     auto detailsPanel  = constructDetails(vehicle);
     auto summaryPanel = constructSummary(state, vehicle, order);
 
-    auto calendarComponent = constructCalendar(state);
+    auto calendarComponent = constructCalendar(state, vehicle->getId());
     auto closeCalendarBtn = Button("Zamknij", [isCalendarOpen]{
         *isCalendarOpen = false;
     }, ButtonOption::Ascii());

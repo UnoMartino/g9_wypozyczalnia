@@ -64,7 +64,7 @@ Component constructCalendarHeader(ApplicationState& state, std::function<void()>
 }
 
 
-Component constructCalendarGrid(ApplicationState& state) {
+Component constructCalendarGrid(ApplicationState& state, int vehicleId) {
     auto grid = Container::Vertical({});
     auto current = state.currentCalendarState;
 
@@ -96,26 +96,40 @@ Component constructCalendarGrid(ApplicationState& state) {
     std::tm* now_tm = std::localtime(&now_c);
     auto today = createTimePoint(now_tm->tm_year + 1900, now_tm->tm_mon + 1, now_tm->tm_mday);
 
+    auto reservations = state.getReservations(vehicleId);
+
     for (int day = 1; day <= dayInMonth; ++day) {
         auto date = createTimePoint(current.year, current.month, day);
         bool isPast = date < today;
 
+        bool isReserved = false;
+        for (const auto& res : reservations) {
+            if (date >= res.start && date <= res.end) {
+                isReserved = true;
+                break;
+            }
+        }
+
         ButtonOption opt;
-        opt.transform = [&state, date, isPast] (const EntryState& es) {
+        opt.transform = [&state, date, isPast, isReserved] (const EntryState& es) {
             auto element = text(es.label) | hcenter | size(WIDTH, EQUAL, 4);
 
             if (isPast) return element | color(Color::GrayDark);
+            if (isReserved) return element | bgcolor(Color::Red);
 
-            if (state.rangeStart && date == *state.rangeStart) element |= bgcolor(Color::Blue);
-            else if (state.rangeEnd && date == *state.rangeEnd) element |= bgcolor(Color::Blue);
-            else if (state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd) element |= bgcolor(Color::DeepSkyBlue1);
+            bool isStart = state.rangeStart && date == *state.rangeStart;
+            bool isEnd = state.rangeEnd && date == *state.rangeEnd;
+            bool isBetween = state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd;
+
+            if (isStart || isEnd) element |= bgcolor(Color::Blue);
+            else if (isBetween) element |= bgcolor(Color::DeepSkyBlue1);
 
             if (es.focused) element | inverted;
             return element;
         };
 
-        currentRow->Add(Button(std::to_string(day), [&state, date, isPast] {
-            if (isPast) return;
+        currentRow->Add(Button(std::to_string(day), [&state, date, isPast, isReserved] {
+            if (isPast || isReserved) return;
             state.handleDateClick(date);
         }, opt));
 
@@ -129,14 +143,14 @@ Component constructCalendarGrid(ApplicationState& state) {
 }
 
 
-Component constructCalendar(ApplicationState& state) {
+Component constructCalendar(ApplicationState& state, int vehicleId) {
     auto grid_container = Container::Vertical({});
 
-    grid_container->Add(constructCalendarGrid(state));
+    grid_container->Add(constructCalendarGrid(state, vehicleId));
 
-    auto rebuild_grid = [&state, grid_container]() {
+    auto rebuild_grid = [&state, grid_container, vehicleId]() {
         grid_container->DetachAllChildren();
-        grid_container->Add(constructCalendarGrid(state));
+        grid_container->Add(constructCalendarGrid(state, vehicleId));
     };
 
     auto header = constructCalendarHeader(state, rebuild_grid);

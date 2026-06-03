@@ -89,6 +89,8 @@ struct ApplicationState {
     std::optional<std::chrono::system_clock::time_point> rangeStart;
     std::optional<std::chrono::system_clock::time_point> rangeEnd;
 
+    int selectionStep = 0; // 0 = nothing, 1 = started, 2 = finished
+
     //
 
     CalendarState initSystemCalendar() {
@@ -112,15 +114,19 @@ struct ApplicationState {
     }
 
     void handleDateClick(std::chrono::system_clock::time_point clickedDate) {
-        if (!rangeStart || (rangeStart && rangeEnd)) { // first click or resetting after second click
+        if (selectionStep == 0 || selectionStep == 2) {
+            // Start new selection
             rangeStart = clickedDate;
-            rangeEnd = std::nullopt;
-        } else { // second click
-            if (clickedDate <  *rangeStart) {
+            rangeEnd = clickedDate;
+            selectionStep = 1;
+        } else if (selectionStep == 1) {
+            // Expand selection
+            if (clickedDate < *rangeStart) {
                 rangeStart = clickedDate;
             } else {
                 rangeEnd = clickedDate;
             }
+            selectionStep = 2;
         }
     }
 

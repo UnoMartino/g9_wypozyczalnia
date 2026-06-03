@@ -61,10 +61,16 @@ View::View(ApplicationState& state) {
         Vehicle* ptr = vehicle.get();
 
         auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration, orderSummary](){
+            state.rangeStart = std::nullopt;
+            state.rangeEnd = std::nullopt;
+            state.selectionStep = 0;
+
             configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(state, ptr, [this, &state, orderSummary](std::shared_ptr<Order> finalOrder) {
+            configuration->Add(constructConfigurationForm(state, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
                 state.orders.push_back(*finalOrder);
                 saveOrders(state.orders);
+
+                state.addReservation(ptr->getId(), finalOrder->rentRange);
 
                 orderSummary->DetachAllChildren();
                 orderSummary->Add(constructOrderSummary(state, finalOrder, [this, &state]{

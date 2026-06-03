@@ -59,6 +59,7 @@ public:
     VehicleTier getTier() { return m_commonData.tier; }
     uint32_t getPrice() { return m_commonData.price; }
     std::string getName() { return m_commonData.modelName; }
+    int getId() const { return m_commonData.id; }
 private:
 
 }; // Vehicle
