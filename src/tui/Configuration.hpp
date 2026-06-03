@@ -16,4 +16,4 @@ using namespace ftxui;
 
 // =====
 
-Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action);
+Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel);

@@ -176,7 +176,7 @@ static FocusKind cktofk(NavigationContextKind ck) {
     switch (ck) {
         case NONE: abort();
         case HOME: return FocusKind::HOME;
-        case VEHICLE_DETAILS: return FocusKind::VEHICLE_DETAILS;
+        case VEHICLE_DETAILS: return FocusKind::VEHICLE_FORM;
         case VEHICLE_FORM: return FocusKind::VEHICLE_FORM;
         case ORDER_SUMMARY: return FocusKind::ORDER_SUMMARY;
         case ADMIN_DASHBOARD: return FocusKind::ADMIN_DASHBOARD;

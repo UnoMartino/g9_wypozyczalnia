@@ -80,11 +80,10 @@ Component constructCalendarGrid(ApplicationState& state, int vehicleId) {
         }) | color(Color::GrayDark);
     }));
 
-    auto currentRow = Container::Horizontal({});
-
     int offset = getFirstDayOffset(current.year, current.month);
     int padding = (offset == 0) ? 6 : offset - 1;
 
+    auto currentRow = Container::Horizontal({});
     for (int p = 0; p < padding; ++p) {
         currentRow->Add(Renderer([]{ return text("    ") | size(WIDTH, EQUAL, 4); }));
     }
@@ -95,13 +94,11 @@ Component constructCalendarGrid(ApplicationState& state, int vehicleId) {
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
     std::tm* now_tm = std::localtime(&now_c);
     auto today = createTimePoint(now_tm->tm_year + 1900, now_tm->tm_mon + 1, now_tm->tm_mday);
-
     auto reservations = state.getReservations(vehicleId);
 
     for (int day = 1; day <= dayInMonth; ++day) {
         auto date = createTimePoint(current.year, current.month, day);
         bool isPast = date < today;
-
         bool isReserved = false;
         for (const auto& res : reservations) {
             if (date >= res.start && date <= res.end) {
@@ -111,21 +108,35 @@ Component constructCalendarGrid(ApplicationState& state, int vehicleId) {
         }
 
         ButtonOption opt;
-        opt.transform = [&state, date, isPast, isReserved] (const EntryState& es) {
-            auto element = text(es.label) | hcenter | size(WIDTH, EQUAL, 4);
+        opt.transform = [&state, date, isPast, isReserved, day] (const EntryState& es) {
+            
+            std::string label;
+            if (es.focused) {
+                label = (day < 10) ? "[ " + std::to_string(day) + "]" : "[" + std::to_string(day) + "]";
+            } else {
+                label = (day < 10) ? "  " + std::to_string(day) + " " : " " + std::to_string(day) + " ";
+            }
 
-            if (isPast) return element | color(Color::GrayDark);
-            if (isReserved) return element | bgcolor(Color::Red);
+            auto element = text(label) | hcenter;
 
-            bool isStart = state.rangeStart && date == *state.rangeStart;
-            bool isEnd = state.rangeEnd && date == *state.rangeEnd;
-            bool isBetween = state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd;
+            if (es.focused) {
+                element |= color(Color::Black) | bgcolor(Color::White) | bold;
+            } else {
+                if (isPast) {
+                    element |= color(Color::GrayDark);
+                } else if (isReserved) {
+                    element |= bgcolor(Color::Red) | color(Color::White);
+                } else {
+                    bool isStart = state.rangeStart && date == *state.rangeStart;
+                    bool isEnd = state.rangeEnd && date == *state.rangeEnd;
+                    bool isBetween = state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd;
 
-            if (isStart || isEnd) element |= bgcolor(Color::Blue);
-            else if (isBetween) element |= bgcolor(Color::DeepSkyBlue1);
+                    if (isStart || isEnd) element |= bgcolor(Color::Blue) | color(Color::White);
+                    else if (isBetween) element |= bgcolor(Color::DeepSkyBlue1) | color(Color::White);
+                }
+            }
 
-            if (es.focused) element | inverted;
-            return element;
+            return element | size(WIDTH, EQUAL, 4);
         };
 
         currentRow->Add(Button(std::to_string(day), [&state, date, isPast, isReserved] {

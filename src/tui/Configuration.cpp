@@ -95,7 +95,7 @@ Component constructSummary(ApplicationState& state, Vehicle* vehicle, std::share
     });
 }
 
-Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action) {
+Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel) {
 
     auto order = std::make_shared<Order>();
     order->vehicleId = vehicle->getId();
@@ -111,6 +111,8 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
     auto dateBtn = Button("Wybierz zakres dat", [isCalendarOpen]{
         *isCalendarOpen = true;
     }, ButtonOption::Ascii());
+
+    auto cancelBtn = Button("Anuluj", onCancel, ButtonOption::Ascii());
 
     auto submitBtn = Button("Potwierdź i zapłać", [&state, vehicle, action, order, errorMessage]{
         if (order->firstName.empty() || order->lastName.empty() || order->email.empty()) {
@@ -149,16 +151,21 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
         dateBtn,        // 4
         mileageRadio,   // 5
         insurance,      // 6
-        submitBtn       // 7
+        submitBtn,      // 7
+        cancelBtn       // 8
     });
 
-    auto styledForm = Renderer(formLayout, [formLayout, vehicle, errorMessage]{
+    auto styledForm = Renderer(formLayout, [&state, order, formLayout, vehicle, errorMessage]{
         bool isFocused = formLayout->Focused();
         int i = 0;
 
         auto errorDisplay = errorMessage->empty()
             ? text("")
             : text(*errorMessage) | color(Color::Red) | bold | hcenter;
+
+        auto dateDisplay = (state.rangeStart && state.rangeEnd)
+            ? text(order->rentRange.toString()) | color(Color::GrayDark)
+            : text("Nie wybrano") | color(Color::GrayDark);
 
         auto innerContent = vbox({
             text("Dane klienta:") | bold,
@@ -168,9 +175,10 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
 
             separator(),
             text("Okres wynajmu:") | bold,
-            formLayout->ChildAt(i++)->Render(),
+            hbox({ formLayout->ChildAt(i++)->Render(), filler(), dateDisplay }),
 
             separator(),
+
             text("Limit:") | bold,
             formLayout->ChildAt(i++)->Render(),
 
@@ -181,7 +189,11 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
             filler(),
             errorDisplay,
             separator(),
-            formLayout->ChildAt(i++)->Render() | hcenter,
+            hbox({
+                formLayout->ChildAt(i++)->Render() | flex,
+                text(" "),
+                formLayout->ChildAt(i++)->Render() | flex,
+            }) | hcenter,
         }) | borderEmpty | flex;
 
         auto shieldedContent = innerContent | color(Color::White);

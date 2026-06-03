@@ -83,6 +83,11 @@ View::View(ApplicationState& state) {
                 state.navigationStack.push_back(NavigationNode{ORDER_SUMMARY, "Potwierdzenie"});
                 state.currentFocus = FocusKind::ORDER_SUMMARY;
                 this->rebuildBreadcrumbs(state);
+            }, [this, &state] {
+                state.navigationStack.clear();
+                state.navigationStack.push_back({HOME, "Home"});
+                state.currentFocus = FocusKind::HOME;
+                this->rebuildBreadcrumbs(state);
             }));
             configuration->TakeFocus();
 
@@ -125,6 +130,9 @@ View::View(ApplicationState& state) {
     auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
+                if (state.currentFocus == FocusKind::HOME) {
+                    postcard_container->TakeFocus();
+                }
                 return hbox({
                     postcard_container->Render(),
                     rightPanel->Render(),

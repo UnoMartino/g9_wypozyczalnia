@@ -125,29 +125,12 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
         case FocusKind::HOME: {
             shortcuts.insert({
 
-                {Event::Backspace, [this] {
-                    if (m_state.navigationStack.size() > 1) {
-                        m_state.navigationStack.pop_back();
-                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
-
-                        m_view.rebuildBreadcrumbs(m_state);
-                    }
-                }},
-
             });
         } break;
 
         case FocusKind::VEHICLE_DETAILS: {
             shortcuts.insert({
 
-                {Event::Backspace, [this] {
-                    if (m_state.navigationStack.size() > 1) {
-                        m_state.navigationStack.pop_back();
-                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
-
-                        m_view.rebuildBreadcrumbs(m_state);
-                    }
-                }},
             });
         } break;
 
