@@ -18,6 +18,9 @@ const char *debug_flags[] = {
 #ifdef __APPLE__
     "-mmacosx-version-min=12.0",
 #endif
+#ifdef _WIN32
+    "-DUNICODE", "-D_UNICODE",
+#endif
     "-ggdb", "-O0",
     "-I", "src",
     "-I", "include",
@@ -33,6 +36,9 @@ const char *release_flags[] = {
     "-std=c++17",
 #ifdef __APPLE__
     "-mmacosx-version-min=12.0",
+#endif
+#ifdef _WIN32
+    "-DUNICODE", "-D_UNICODE",
 #endif
     "-O3",
     "-I", "src",
@@ -241,7 +247,11 @@ void clean_build(void) {
 }
 
 int main(int argc, char** argv) {
-    NOB_GO_REBUILD_URSELF(argc, argv);
+    #ifdef _WIN32
+    // NOB_GO_REBUILD_URSELF(argc, argv);
+    #else
+        NOB_GO_REBUILD_URSELF(argc, argv);
+    #endif
     nob_shift_args(&argc, &argv); // pop ./nob
 
     // extract -jX flag and shift the remaining args down
