@@ -64,7 +64,7 @@ Component constructCalendarHeader(ApplicationState& state, std::function<void()>
 }
 
 
-Component constructCalendarGrid(ApplicationState& state) {
+Component constructCalendarGrid(ApplicationState& state, int vehicleId) {
     auto grid = Container::Vertical({});
     auto current = state.currentCalendarState;
 
@@ -80,11 +80,10 @@ Component constructCalendarGrid(ApplicationState& state) {
         }) | color(Color::GrayDark);
     }));
 
-    auto currentRow = Container::Horizontal({});
-
     int offset = getFirstDayOffset(current.year, current.month);
     int padding = (offset == 0) ? 6 : offset - 1;
 
+    auto currentRow = Container::Horizontal({});
     for (int p = 0; p < padding; ++p) {
         currentRow->Add(Renderer([]{ return text("    ") | size(WIDTH, EQUAL, 4); }));
     }
@@ -95,27 +94,53 @@ Component constructCalendarGrid(ApplicationState& state) {
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
     std::tm* now_tm = std::localtime(&now_c);
     auto today = createTimePoint(now_tm->tm_year + 1900, now_tm->tm_mon + 1, now_tm->tm_mday);
+    auto reservations = state.getReservations(vehicleId);
 
     for (int day = 1; day <= dayInMonth; ++day) {
         auto date = createTimePoint(current.year, current.month, day);
         bool isPast = date < today;
+        bool isReserved = false;
+        for (const auto& res : reservations) {
+            if (date >= res.start && date <= res.end) {
+                isReserved = true;
+                break;
+            }
+        }
 
         ButtonOption opt;
-        opt.transform = [&state, date, isPast] (const EntryState& es) {
-            auto element = text(es.label) | hcenter | size(WIDTH, EQUAL, 4);
+        opt.transform = [&state, date, isPast, isReserved, day] (const EntryState& es) {
+            
+            std::string label;
+            if (es.focused) {
+                label = (day < 10) ? "[ " + std::to_string(day) + "]" : "[" + std::to_string(day) + "]";
+            } else {
+                label = (day < 10) ? "  " + std::to_string(day) + " " : " " + std::to_string(day) + " ";
+            }
 
-            if (isPast) return element | color(Color::GrayDark);
+            auto element = text(label) | hcenter;
 
-            if (state.rangeStart && date == *state.rangeStart) element |= bgcolor(Color::Blue);
-            else if (state.rangeEnd && date == *state.rangeEnd) element |= bgcolor(Color::Blue);
-            else if (state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd) element |= bgcolor(Color::DeepSkyBlue1);
+            if (es.focused) {
+                element |= color(Color::Black) | bgcolor(Color::White) | bold;
+            } else {
+                if (isPast) {
+                    element |= color(Color::GrayDark);
+                } else if (isReserved) {
+                    element |= bgcolor(Color::Red) | color(Color::White);
+                } else {
+                    bool isStart = state.rangeStart && date == *state.rangeStart;
+                    bool isEnd = state.rangeEnd && date == *state.rangeEnd;
+                    bool isBetween = state.rangeStart && state.rangeEnd && date > *state.rangeStart && date < *state.rangeEnd;
 
-            if (es.focused) element | inverted;
-            return element;
+                    if (isStart || isEnd) element |= bgcolor(Color::Blue) | color(Color::White);
+                    else if (isBetween) element |= bgcolor(Color::DeepSkyBlue1) | color(Color::White);
+                }
+            }
+
+            return element | size(WIDTH, EQUAL, 4);
         };
 
-        currentRow->Add(Button(std::to_string(day), [&state, date, isPast] {
-            if (isPast) return;
+        currentRow->Add(Button(std::to_string(day), [&state, date, isPast, isReserved] {
+            if (isPast || isReserved) return;
             state.handleDateClick(date);
         }, opt));
 
@@ -129,14 +154,14 @@ Component constructCalendarGrid(ApplicationState& state) {
 }
 
 
-Component constructCalendar(ApplicationState& state) {
+Component constructCalendar(ApplicationState& state, int vehicleId) {
     auto grid_container = Container::Vertical({});
 
-    grid_container->Add(constructCalendarGrid(state));
+    grid_container->Add(constructCalendarGrid(state, vehicleId));
 
-    auto rebuild_grid = [&state, grid_container]() {
+    auto rebuild_grid = [&state, grid_container, vehicleId]() {
         grid_container->DetachAllChildren();
-        grid_container->Add(constructCalendarGrid(state));
+        grid_container->Add(constructCalendarGrid(state, vehicleId));
     };
 
     auto header = constructCalendarHeader(state, rebuild_grid);

@@ -1,4 +1,8 @@
-#include "Concfiguration.hpp"
+#include "Calendar.hpp"
+#include "Configuration.hpp"
+
+#include "../data/Calc.hpp"
+#include "../data/Util.hpp"
 
 #include "ftxui/component/app.hpp"
 #include "ftxui/component/component.hpp"
@@ -7,7 +11,6 @@
 
 #include <memory>
 #include <functional>
-
 
 // ====
 
@@ -20,12 +23,17 @@ Component constructDetails(Vehicle* vehicle) {
             details.push_back(hbox({ text(key + ": " + value), filler() }));
         }
 
+        auto formatPrice = [](double price) {
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(2) << price;
+            return stream.str();
+        };
+
         auto content = vbox({
 
-            hbox({
+            vbox({
                 text("Klasa: " + std::string(tierToString(vehicle->getTier()))),
-                filler(),
-                text("Cena: " + std::to_string(vehicle->getPrice()) + " PLN"),
+                text("Cena: " + formatPrice(calculateRentCost(vehicle->getPrice(), 1, vehicle->getTier())) + " PLN/dzień"),
             }),
 
             text("") | bold,
@@ -39,18 +47,37 @@ Component constructDetails(Vehicle* vehicle) {
     });
 }
 
-Component constructSummary(Vehicle* vehicle, std::shared_ptr<Order> order) {
-    return Renderer([vehicle, order]{
+// Added ApplicationState& state
+Component constructSummary(ApplicationState& state, Vehicle* vehicle, std::shared_ptr<Order> order) {
+    return Renderer([&state, vehicle, order]{
 
-        int totalPrice = vehicle->getPrice();
-        int insurancePrice = order->wantsInsurance ? 50 : 0;
-        totalPrice += insurancePrice;
+        int days = 0;
+        if (state.rangeStart && state.rangeEnd) {
+            order->rentRange.start = *state.rangeStart;
+            order->rentRange.end = *state.rangeEnd;
+
+            days = order->rentRange.duration();
+        }
+
+        auto formatPrice = [](double price) {
+            std::ostringstream stream;
+            stream << std::fixed << std::setprecision(2) << price;
+            return stream.str();
+        };
+
+        double rentPrice = (days > 0) ? calculateRentCost(vehicle->getPrice(), days, vehicle->getTier()) : 0.0;
+        double insurancePrice = (order->wantsInsurance && days > 0) ? 50.00 : 0.00;
+        double mileageCost = (days > 0) ? calculateMileageLimitCost(order->mileageTier, days) : 0.0;
+        double totalPrice = vehicle->getPrice() + rentPrice + insurancePrice + mileageCost;
 
         auto content = vbox({
             text("Koszty:") | bold,
             separator(),
-            hbox({ text("Wynajem: "), filler(), text(std::to_string(vehicle->getPrice()) + " PLN") }),
-            hbox({ text("Ubezpieczenie: "), filler(), text(std::to_string(insurancePrice) + " PLN") }),
+            hbox({ text("Zaliczka: "), filler(), text(formatPrice(vehicle->getPrice()) + " PLN") }),
+            hbox({ text("Wynajem (" + std::to_string(days) + (days == 1 ? " dzień" : " dni") + "): "), filler(), text(formatPrice(rentPrice) + " PLN") }),
+            hbox({ text("Przebieg: "), filler(), text(formatPrice(mileageCost) + " PLN") }),
+
+            hbox({ text("Ubezpieczenie: "), filler(), text(formatPrice(insurancePrice) + " PLN") }),
 
             filler(),
             separator(),
@@ -58,7 +85,7 @@ Component constructSummary(Vehicle* vehicle, std::shared_ptr<Order> order) {
             hbox({
                 text("Razem: ") | bold,
                 filler(),
-                text(std::to_string(totalPrice) + " PLN") | bold | color(Color::Green)
+                text(formatPrice(totalPrice) + " PLN") | bold | color(Color::Green)
             }),
         }) | borderEmpty | flex;
 
@@ -68,56 +95,78 @@ Component constructSummary(Vehicle* vehicle, std::shared_ptr<Order> order) {
     });
 }
 
-Component constructConfigurationForm(Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action) {
+Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel) {
 
     auto order = std::make_shared<Order>();
-    auto isCalendarOpen = std::make_shared<bool>();
+    order->vehicleId = vehicle->getId();
+
+    auto isCalendarOpen = std::make_shared<bool>(false);
+    auto errorMessage = std::make_shared<std::string>("");
 
     auto firstNameInput = Input(&(order->firstName), "Wpisz imię");
     auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko");
     auto emailInput = Input(&(order->email), "Wpisz adres e-mail");
+    auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
 
     auto dateBtn = Button("Wybierz zakres dat", [isCalendarOpen]{
         *isCalendarOpen = true;
-
     }, ButtonOption::Ascii());
 
-    // button that shows the popup with calendar for range selection
-    // calendar should disable days that are already taken
+    auto cancelBtn = Button("Anuluj", onCancel, ButtonOption::Ascii());
 
-    auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
+    auto submitBtn = Button("Potwierdź i zapłać", [&state, vehicle, action, order, errorMessage]{
+        if (order->firstName.empty() || order->lastName.empty() || order->email.empty()) {
+            *errorMessage = "Wypełnij wszystkie pola tekstowe";
+            return;
+        }
 
-    auto submitBtn = Button("Potwierdź i zapłać", [action, order]{
+        if (order->email.find('@') == std::string::npos) {
+            *errorMessage = "Nieprawidłowy email";
+            return;
+        }
+
+        if (!state.rangeStart || !state.rangeEnd) {
+            *errorMessage = "Wybierz termin wynajmu";
+            return;
+        }
+
+        auto reservations = state.getReservations(vehicle->getId());
+        for (const auto& res : reservations) {
+            if (order->rentRange.start <= res.end && order->rentRange.end >= res.start) {
+                *errorMessage = "Wybrany termin koliduje z inną rezerwacją";
+                return;
+            }
+        }
+
+        *errorMessage = ""; // Czysto, puszczamy akcję dalej
         action(order);
     }, ButtonOption::Ascii());
 
+    auto mileageRadio = Radiobox(&(order->mileageOptions), &(order->mileageTier), RadioboxOption::Simple());
+
     auto formLayout = Container::Vertical({
-        firstNameInput,
-        lastNameInput,
-        emailInput,
-
-        insurance,
-        dateBtn,
-
-        submitBtn
+        firstNameInput, // 1
+        lastNameInput,  // 2
+        emailInput,     // 3
+        dateBtn,        // 4
+        mileageRadio,   // 5
+        insurance,      // 6
+        submitBtn,      // 7
+        cancelBtn       // 8
     });
 
-    auto detailsPanel  = constructDetails(vehicle);
-    auto summaryPanel = constructSummary(vehicle, order);
-
-
-    auto combinedLayout = Container::Horizontal({
-        detailsPanel,
-        formLayout,
-        summaryPanel
-    });
-
-    // REVIEW
-    // auto final = Renderer(formLayout, [detailsPanel, formLayout, summaryPanel, vehicle]{
-    auto final = Renderer(combinedLayout, [detailsPanel, formLayout, summaryPanel, vehicle]{
+    auto styledForm = Renderer(formLayout, [&state, order, formLayout, vehicle, errorMessage]{
         bool isFocused = formLayout->Focused();
-
         int i = 0;
+
+        auto errorDisplay = errorMessage->empty()
+            ? text("")
+            : text(*errorMessage) | color(Color::Red) | bold | hcenter;
+
+        auto dateDisplay = (state.rangeStart && state.rangeEnd)
+            ? text(order->rentRange.toString()) | color(Color::GrayDark)
+            : text("Nie wybrano") | color(Color::GrayDark);
+
         auto innerContent = vbox({
             text("Dane klienta:") | bold,
             hbox({ text("Imię: "), formLayout->ChildAt(i++)->Render()}),
@@ -125,28 +174,69 @@ Component constructConfigurationForm(Vehicle* vehicle, std::function<void(std::s
             hbox({ text("E-mail: "), formLayout->ChildAt(i++)->Render()}),
 
             separator(),
+            text("Okres wynajmu:") | bold,
+            hbox({ formLayout->ChildAt(i++)->Render(), filler(), dateDisplay }),
+
+            separator(),
+
+            text("Limit:") | bold,
+            formLayout->ChildAt(i++)->Render(),
+
+            separator(),
             text("Opcje dodatkowe:") | bold,
             formLayout->ChildAt(i++)->Render(),
 
             filler(),
+            errorDisplay,
             separator(),
-            formLayout->ChildAt(i++)->Render() | hcenter,
+            hbox({
+                formLayout->ChildAt(i++)->Render() | flex,
+                text(" "),
+                formLayout->ChildAt(i++)->Render() | flex,
+            }) | hcenter,
         }) | borderEmpty | flex;
 
         auto shieldedContent = innerContent | color(Color::White);
         auto title = text(" Konfiguracja wynajmu: " + vehicle->getName() + " ") | bold | color(Color::DeepSkyBlue1);
-        auto formWindow = window(title, shieldedContent) | flex;
+        auto formWindow = window(title, shieldedContent) | flex | size(WIDTH, EQUAL, 60);
 
         if (isFocused) {
-            formWindow = formWindow | color(Color::Green);
+            return formWindow | color(Color::Green);
         }
+        return formWindow;
+    });
 
+    auto detailsPanel  = constructDetails(vehicle);
+    auto summaryPanel = constructSummary(state, vehicle, order);
+
+    auto calendarComponent = constructCalendar(state, vehicle->getId());
+    auto closeCalendarBtn = Button("Zamknij", [isCalendarOpen]{
+        *isCalendarOpen = false;
+    }, ButtonOption::Ascii());
+
+    auto modalContainer = Container::Vertical({
+        calendarComponent,
+        closeCalendarBtn,
+    });
+
+    auto modalRenderer = Renderer(modalContainer, [modalContainer]{
+        return window(text(" Wybierz daty "), vbox({
+            modalContainer->ChildAt(0)->Render(),
+            filler(),
+            modalContainer->ChildAt(1)->Render() | hcenter,
+        })) | clear_under | center;
+    });
+
+    auto formWithModal = Modal(styledForm, modalRenderer, isCalendarOpen.get());
+
+    // formWithModal is the only interactive root here.
+    auto final = Renderer(formWithModal, [formWithModal, detailsPanel, summaryPanel]{
         return hbox({
             detailsPanel->Render(),
-            formWindow,
+            formWithModal->Render(),
             summaryPanel->Render()
         }) | flex;
     });
 
     return final;
-} // constructConfigurationForm
+}

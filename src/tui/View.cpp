@@ -1,7 +1,8 @@
 #include "View.hpp"
-#include "Concfiguration.hpp"
+#include "Configuration.hpp"
 #include "Postcard.hpp"
 #include "RightPanel.hpp"
+#include "OrderSummary.hpp"
 
 #include "../Application.hpp"
 #include "ftxui/component/component.hpp"
@@ -52,24 +53,43 @@ View::View(ApplicationState& state) {
 
     Components postcards;
     Component configuration = Container::Vertical({});
+    Component orderSummary = Container::Vertical({});
+
     for (const auto& vehicle: state.loadedVehicles) {
         if (vehicle == nullptr) continue;
 
         Vehicle* ptr = vehicle.get();
 
-        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration](){
+        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration, orderSummary](){
+            state.rangeStart = std::nullopt;
+            state.rangeEnd = std::nullopt;
+            state.selectionStep = 0;
+
             configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(ptr, [&state](std::shared_ptr<Order> finalOrder) {
+            configuration->Add(constructConfigurationForm(state, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
+                state.orders.push_back(*finalOrder);
+                saveOrders(state.orders);
 
-                // perform order submission
-                // save the order to database (later json file)
+                state.addReservation(ptr->getId(), finalOrder->rentRange);
 
+                orderSummary->DetachAllChildren();
+                orderSummary->Add(constructOrderSummary(state, finalOrder, [this, &state]{
+                    state.navigationStack.clear();
+                    state.navigationStack.push_back({HOME, "Home"});
+                    state.currentFocus = FocusKind::HOME;
+                    this->rebuildBreadcrumbs(state);
+                }));
 
-
-                state.currentFocus = FocusKind::VEHICLE_DETAILS;
+                state.navigationStack.push_back(NavigationNode{ORDER_SUMMARY, "Potwierdzenie"});
+                state.currentFocus = FocusKind::ORDER_SUMMARY;
+                this->rebuildBreadcrumbs(state);
+            }, [this, &state] {
+                state.navigationStack.clear();
+                state.navigationStack.push_back({HOME, "Home"});
+                state.currentFocus = FocusKind::HOME;
+                this->rebuildBreadcrumbs(state);
             }));
             configuration->TakeFocus();
-
 
             state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
             state.currentFocus = FocusKind::VEHICLE_FORM;
@@ -86,7 +106,6 @@ View::View(ApplicationState& state) {
         rightPanel
     });
 
-    // 2. Wrap them in Maybe containers tied to your state.
     // This tells the engine to safely mount/unmount them from the event loop.
 
     auto safeHome = Maybe(homeView, [&state] {
@@ -97,17 +116,23 @@ View::View(ApplicationState& state) {
         return state.getCurrentContext().contextId == VEHICLE_DETAILS;
     });
 
-    // 3. THIS IS THE MOST IMPORTANT PART.
+    auto safeSummary = Maybe(orderSummary, [&state] {
+        return state.getCurrentContext().contextId == ORDER_SUMMARY;
+    });
+
     // Both safe wrappers must be inside the base tree!
     auto contentComponents = Container::Horizontal({
         safeHome,
-        safeConfig
+        safeConfig,
+        safeSummary
     });
 
-    // 4. Now the Renderer is perfectly safe because the components are actually in the tree.
-    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration] () -> Element {
+    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
+                if (state.currentFocus == FocusKind::HOME) {
+                    postcard_container->TakeFocus();
+                }
                 return hbox({
                     postcard_container->Render(),
                     rightPanel->Render(),
@@ -116,6 +141,9 @@ View::View(ApplicationState& state) {
 
             case VEHICLE_DETAILS:
                 return configuration->Render() | flex;
+
+            case ORDER_SUMMARY:
+                return orderSummary->Render() | flex;
 
             case VEHICLE_FORM:
                 return text("TODO");
@@ -139,7 +167,6 @@ View::View(ApplicationState& state) {
         return state.currentFocus == FocusKind::TOPBAR;
     });
     auto contentPanel = makePanel(Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
-        // TODO! translate CONTEXT::KIND -> FOCUS::KIND
         return state.currentFocus == cktofk(state.getCurrentContext().contextId);
     });
 
@@ -166,6 +193,9 @@ void View::constructFooter(ApplicationState& state) {
                 break;
             case FocusKind::VEHICLE_FORM:
                 shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj "));
+                break;
+            case FocusKind::ORDER_SUMMARY:
+                shortcuts.push_back(text("| [Enter] Powrót do menu "));
                 break;
             case FocusKind::TOPBAR:
                 shortcuts.push_back(text("| [Backspace] Powrót | [←/→] Nawiguj "));

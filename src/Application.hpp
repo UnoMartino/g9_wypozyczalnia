@@ -11,6 +11,7 @@
 #include "data/vehicle/Car.hpp"
 #include "data/vehicle/Truck.hpp"
 #include "data/vehicle/Motorcycle.hpp"
+#include "data/Order.hpp"
 
 #include "ftxui/component/component_base.hpp"
 #include "ftxui/component/screen_interactive.hpp"
@@ -27,7 +28,6 @@ struct FtxuiEventHash {
 };
 
 using ShortcutMap = std::unordered_map<ftxui::Event, std::function<void()>, FtxuiEventHash>;
-using DateRange = std::pair<std::chrono::system_clock::time_point, std::chrono::system_clock::time_point>;
 
 // ====
 
@@ -36,6 +36,7 @@ enum class FocusKind {
     HOME,
     VEHICLE_DETAILS,
     VEHICLE_FORM,
+    ORDER_SUMMARY,
     ADMIN_DASHBOARD,
     RIGHTBAR,
 };
@@ -45,6 +46,7 @@ enum NavigationContextKind {
     HOME,
     VEHICLE_DETAILS,
     VEHICLE_FORM,
+    ORDER_SUMMARY,
     ADMIN_DASHBOARD,
 };
 
@@ -53,16 +55,19 @@ struct NavigationNode {
     std::string label;
 };
 
-
 struct CalendarState {
     int year;
     int month;
 };
 
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles();
+static std::vector<Order> loadOrders();
 // stores application state data
 struct ApplicationState {
     std::vector<std::unique_ptr<Vehicle>> loadedVehicles = loadVehicles();       // store vehicle list from 'data.json'
+
+    std::unordered_map<int, std::vector<DateRange>> reservations;
+    std::vector<Order> orders = loadOrders();
 
     bool isRunning = true;                                      // is application running
 
@@ -83,6 +88,8 @@ struct ApplicationState {
 
     std::optional<std::chrono::system_clock::time_point> rangeStart;
     std::optional<std::chrono::system_clock::time_point> rangeEnd;
+
+    int selectionStep = 0; // 0 = nothing, 1 = started, 2 = finished
 
     //
 
@@ -107,16 +114,32 @@ struct ApplicationState {
     }
 
     void handleDateClick(std::chrono::system_clock::time_point clickedDate) {
-        if (!rangeStart || (rangeStart && rangeEnd)) { // first click or resetting after second click
+        if (selectionStep == 0 || selectionStep == 2) {
+            // Start new selection
             rangeStart = clickedDate;
-            rangeEnd = std::nullopt;
-        } else { // second click
-            if (clickedDate <  *rangeStart) {
+            rangeEnd = clickedDate;
+            selectionStep = 1;
+        } else if (selectionStep == 1) {
+            // Expand selection
+            if (clickedDate < *rangeStart) {
                 rangeStart = clickedDate;
             } else {
                 rangeEnd = clickedDate;
             }
+            selectionStep = 2;
         }
+    }
+
+    std::vector<DateRange> getReservations(int id) {
+        auto it = reservations.find(id);
+        if (it != reservations.end()) {
+            return it->second;
+        }
+        return {};
+    }
+
+    void addReservation(int id, DateRange range) {
+        reservations[id].push_back(range);
     }
 
 }; // ApplicationState
@@ -153,8 +176,9 @@ static FocusKind cktofk(NavigationContextKind ck) {
     switch (ck) {
         case NONE: abort();
         case HOME: return FocusKind::HOME;
-        case VEHICLE_DETAILS: return FocusKind::VEHICLE_DETAILS;
+        case VEHICLE_DETAILS: return FocusKind::VEHICLE_FORM;
         case VEHICLE_FORM: return FocusKind::VEHICLE_FORM;
+        case ORDER_SUMMARY: return FocusKind::ORDER_SUMMARY;
         case ADMIN_DASHBOARD: return FocusKind::ADMIN_DASHBOARD;
     }
 
@@ -180,6 +204,10 @@ static std::unique_ptr<Vehicle> parseVehicle(const json& item) {
 
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
     json data = loadFile("./data.json");
+    if (data.is_null() || data.empty()) {
+        return {};
+    }
+
     std::vector<std::unique_ptr<Vehicle>> vehicles;
     for (const auto& item : data) {
         if (auto vehicle = parseVehicle(item)) {
@@ -189,3 +217,20 @@ static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
 
     return vehicles;
 } // loadVehicles
+
+static std::vector<Order> loadOrders() {
+    json data = loadFile("./orders.json");
+    if (data.is_null() || data.empty()) {
+        return {};
+    }
+
+    std::vector<Order> orders;
+    for (const auto& item : data) {
+
+        Order order;
+        from_json(item, order);
+        orders.push_back(std::move(order));
+    }
+
+    return orders;
+}

@@ -13,4 +13,4 @@ using namespace ftxui;
 
 // ====
 
-Component constructCalendar(ApplicationState& state);
+Component constructCalendar(ApplicationState& state, int vehicleId = -1);

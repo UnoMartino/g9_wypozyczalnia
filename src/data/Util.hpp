@@ -10,12 +10,18 @@
 
 // ====
 
+inline std::string format_date(const std::chrono::system_clock::time_point& tp);
+
 struct DateRange {
     std::chrono::system_clock::time_point start;
     std::chrono::system_clock::time_point end;
 
     int duration() const {
         return (std::chrono::duration_cast<std::chrono::hours>(end - start).count() / 24) + 1;
+    }
+
+    std::string toString() const {
+        return format_date(start) + " - " + format_date(end);
     }
 };
 

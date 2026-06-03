@@ -2,6 +2,7 @@
 
 
 // #include "data/Vehicle.hpp"
+#include "data/Order.hpp"
 #include "data/vehicle/Vehicle.hpp"
 
 #include "ftxui/component/component_base.hpp"
@@ -17,8 +18,12 @@
 // ====
 
 Application::Application() : m_view(m_state) {
-
     m_state.currentCalendarState = m_state.systemCalendarState;
+
+    // populate reservations from loaded orders
+    for (const auto& order : m_state.orders) {
+        m_state.addReservation(order.vehicleId, order.rentRange);
+    }
 }
 
 // load the application state and data
@@ -45,7 +50,6 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 
     if (e == ftxui::Event::Escape) {
         screen.ExitLoopClosure()();
-        // save the application data to files
         shutdown();
         return true;
     }
@@ -81,6 +85,10 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 // saves the application state and data
 // prepares to exit the application
 void Application::shutdown() {
+
+    //
+    saveOrders(m_state.orders);
+
     m_state.isRunning = false;
 } // Application::shutdown
 
@@ -117,29 +125,12 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
         case FocusKind::HOME: {
             shortcuts.insert({
 
-                {Event::Backspace, [this] {
-                    if (m_state.navigationStack.size() > 1) {
-                        m_state.navigationStack.pop_back();
-                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
-
-                        m_view.rebuildBreadcrumbs(m_state);
-                    }
-                }},
-
             });
         } break;
 
         case FocusKind::VEHICLE_DETAILS: {
             shortcuts.insert({
 
-                {Event::Backspace, [this] {
-                    if (m_state.navigationStack.size() > 1) {
-                        m_state.navigationStack.pop_back();
-                        m_state.currentFocus = cktofk(m_state.navigationStack.back().contextId);
-
-                        m_view.rebuildBreadcrumbs(m_state);
-                    }
-                }},
             });
         } break;
 
