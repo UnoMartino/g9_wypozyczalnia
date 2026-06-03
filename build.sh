@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-COMPILER=${CXX:-clang++}
+COMPILER=${CC:-clang}
 
 # Jeśli binarka './nob' nie istnieje, to robimy initial build
 if [ ! -f ./nob ]; then

@@ -90,40 +90,46 @@ bool ensure_build_dirs(void) {
     return true;
 }
 
-// detect compiler g++/clang++
 const char* detect_compiler() {
-    // check environment variable
-    const char *cxx = getenv("CXX");
-    if (cxx != NULL) return cxx;
-
-    // test compilers
     Nob_Cmd cmd = {0};
-    Nob_Cmd_Opt opt = {0};
 
-    // set error path
 #ifdef _WIN32
-    opt.stdout_path = "NUL"; opt.stderr_path = "NUL";
+    const char* dev_null = "NUL";
 #else
-    opt.stdout_path = "/dev/null"; opt.stderr_path = "/dev/null";
+    const char* dev_null = "/dev/null";
 #endif
 
-    // check clang++
-    nob_cmd_append(&cmd, "/usr/bin/clang++", "--version");
-    if (nob_cmd_run_opt(&cmd, opt)) {
-        nob_cmd_free(cmd);
-        return "/usr/bin/clang++";
+    // check the env variable
+    const char *cxx = getenv("CXX");
+    if (cxx != NULL) {
+        nob_cmd_append(&cmd, cxx, "--version");
+        if (nob_cmd_run_sync_and_reset(&cmd)) {
+            nob_cmd_free(cmd);
+            return cxx;
+        }
+        cmd.count = 0; // reset for next check
+        nob_log(NOB_WARNING, "CXX environment variable is set to '%s', but it is not a valid compiler.", cxx);
     }
 
+    // fallback: check clang++
+    nob_cmd_append(&cmd, "clang++", "--version");
+    if (nob_cmd_run_sync_and_reset(&cmd)) {
+        nob_cmd_free(cmd);
+        return "clang++";
+    }
+    cmd.count = 0;
+
     // fallback: check g++
-    cmd.count = 0; // reset komenty
     nob_cmd_append(&cmd, "g++", "--version");
-    if (nob_cmd_run_opt(&cmd, opt)) {
+    if (nob_cmd_run_sync_and_reset(&cmd)) {
         nob_cmd_free(cmd);
         return "g++";
     }
 
+    // if none of the compilers are found, log an error and exit
+
     nob_cmd_free(cmd);
-    nob_log(NOB_ERROR, "clang++ or g++ not found, cannot build");
+    nob_log(NOB_ERROR, "clang++ or g++ not found, cannot build. Make sure to set CXX environment variable to a valid compiler.");
     exit(1);
 }
 
