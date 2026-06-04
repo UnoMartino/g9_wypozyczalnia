@@ -24,6 +24,7 @@ public:
 
     bool signUp(const std::string& email, const std::string& password, const std::string& firstName = "", const std::string& lastName = "");
     bool signIn(const std::string& email, const std::string& password);
+    bool changePassword(const std::string& email, const std::string& oldPassword, const std::string& newPassword);
     void logout();
 
     User* getCurrentUser() { return m_currentUser; }

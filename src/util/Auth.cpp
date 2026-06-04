@@ -19,6 +19,8 @@ bool AuthManager::signUp(const std::string& email, const std::string& password, 
         return false;
     }
 
+
+
     UserData data;
     data.email = email;
     data.passwordHash = hashPassword(password);
@@ -47,6 +49,20 @@ bool AuthManager::signIn(const std::string& email, const std::string& password) 
     return true;
 } // AuthManager::signIn
 
+bool AuthManager::changePassword(const std::string& email, const std::string& oldPassword, const std::string& newPassword) {
+    if (m_users.find(email) == m_users.end()) {
+        return false;
+    }
+
+    if (m_users[email]->getPasswordHash() != hashPassword(oldPassword)) {
+        return false;
+    }
+
+    m_users[email]->setPasswordHash(hashPassword(newPassword));
+    saveUsers();
+    return true;
+} // AuthManager::changePassword
+
 
 void AuthManager::logout() {
     if (m_currentUser) m_currentUser = nullptr;
@@ -72,14 +88,14 @@ void AuthManager::loadUsers() {
     }
 
     // Default admin fallback
-    if (m_users.find("admin@admin.com") == m_users.end()) {
+    if (m_users.find("admin") == m_users.end()) {
         UserData adminData;
-        adminData.email = "admin@admin.com";
+        adminData.email = "admin";
         adminData.passwordHash = hashPassword("admin");
         adminData.firstName = "Admin";
         adminData.lastName = "Admin";
         adminData.isAdmin = true;
-        m_users["admin@admin.com"] = std::make_unique<User>(std::move(adminData));
+        m_users["admin"] = std::make_unique<User>(std::move(adminData));
         saveUsers();
     }
 }

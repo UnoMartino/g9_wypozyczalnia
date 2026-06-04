@@ -77,6 +77,7 @@ struct ApplicationState {
     bool isLoginModalOpen = false;
     bool isRegisterModalOpen = false;
     bool isOrderAccountModalOpen = false;
+    bool isAccountSettingsModalOpen = false;
 
     // view management
     ScreenInteractive screen = ScreenInteractive::Fullscreen();

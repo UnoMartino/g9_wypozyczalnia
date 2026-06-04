@@ -27,7 +27,7 @@ private:
     Component m_footer;
 
     Component m_breadcrumbs;
-
+    std::string m_userDisplay;
 
 public:
 
@@ -47,5 +47,6 @@ public:
 
     Component constructLoginModal(ApplicationState& state);
     Component constructRegisterModal(ApplicationState& state);
+    Component constructAccountSettingsModal(ApplicationState& state);
 
 }; // View

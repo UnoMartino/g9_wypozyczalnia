@@ -43,6 +43,7 @@ public:
     virtual ~User() = default;
 
     size_t getPasswordHash() { return m_data.passwordHash; }
+    void setPasswordHash(size_t hash) { m_data.passwordHash = hash; }
     const std::string& getEmail() { return m_data.email; }
     const std::string& getFirstName() { return m_data.firstName; }
     const std::string& getLastName() { return m_data.lastName; }

@@ -19,8 +19,25 @@
 
 // =====
 
-Component makePanel(Component title_component, Component inner_content, std::function<bool()> is_focused_cb);
-Component makePanel(std::string title, Component inner_content, std::function<bool()> is_focused_cb);
+static InputOption getWhiteInputOption(bool isPassword = false) {
+    InputOption opt;
+    opt.password = isPassword;
+    opt.transform = [](InputState state) {
+        if (state.is_placeholder) {
+            state.element |= dim;
+        }
+        if (state.focused) {
+            state.element |= bgcolor(Color::White) | color(Color::Black);
+        } else if (state.hovered) {
+            state.element |= underlined;
+        }
+        return state.element;
+    };
+    return opt;
+}
+
+Component makePanel(ApplicationState& state, std::string title, Component inner_content, std::function<bool()> is_focused_cb);
+Component makePanel(ApplicationState& state, Component title_component, Component inner_content, std::function<bool()> is_focused_cb);
 
 // =====
 
@@ -29,14 +46,20 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
 
     rebuildBreadcrumbs(state);
 
-    auto topbarLogic = Renderer(m_breadcrumbs, [this, &state] () {
-        std::string userDisplay = "Zalogowano: " + state.signedInUser;
-        auto userText = text(userDisplay) | color(Color::Blue);
+    m_userDisplay = state.isSignedIn ? state.signedInUser : "Gość";
 
+    auto userBtn = Button(&m_userDisplay, [&state] {
+            if (state.isSignedIn) state.isAccountSettingsModalOpen = true;
+        },
+        ButtonOption::Ascii()
+    );
+
+    auto topbarLogic = Renderer(Container::Horizontal({m_breadcrumbs, userBtn}), [this, &state, userBtn] () {
+        m_userDisplay = state.isSignedIn ? state.signedInUser : "Gość";
         return hbox({
             m_breadcrumbs->Render(),
             filler(),
-            userText
+            userBtn->Render() | color(Color::Blue)
         }) | borderEmpty | flex;
     });
 
@@ -141,7 +164,8 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
     auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
-                if (state.currentFocus == FocusKind::HOME) {
+                bool anyModalOpen = state.isLoginModalOpen || state.isRegisterModalOpen || state.isAccountSettingsModalOpen || state.isOrderAccountModalOpen;
+                if (state.currentFocus == FocusKind::HOME && !anyModalOpen) {
                     postcard_container->TakeFocus();
                 }
                 return hbox({
@@ -168,23 +192,25 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         contentLogic | flex | hcenter,
     });
 
-    auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar, [&state](){
+    auto topbarPanel = makePanel(state, " [0] Nawigacja", m_topbar, [&state](){
         return state.currentFocus == FocusKind::TOPBAR;
     });
-    auto contentPanel = makePanel(Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
+    auto contentPanel = makePanel(state, Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
         return state.currentFocus == cktofk(state.getCurrentContext().contextId);
     });
 
     auto combinedLayout = Container::Vertical({ topbarPanel, contentPanel });
 
-    auto mainPanel =  makePanel("Wypożyczalnia Januszex", combinedLayout, nullptr);
+    auto mainPanel =  makePanel(state, "Wypożyczalnia Januszex", combinedLayout, nullptr);
 
     auto loginModal = constructLoginModal(state);
     auto registerModal = constructRegisterModal(state);
+    auto accountSettingsModal = constructAccountSettingsModal(state);
 
     m_applicationView = mainPanel;
     m_applicationView = Modal(m_applicationView, loginModal, &state.isLoginModalOpen);
     m_applicationView = Modal(m_applicationView, registerModal, &state.isRegisterModalOpen);
+    m_applicationView = Modal(m_applicationView, accountSettingsModal, &state.isAccountSettingsModalOpen);
 
 } // View::View
 
@@ -263,16 +289,16 @@ Component View::constructLoginModal(ApplicationState& state) {
     auto password = std::make_shared<std::string>();
     auto error = std::make_shared<std::string>("");
 
-    InputOption passOpt; passOpt.password = true;
-    auto inputEmail = Input(email.get(), "E-mail");
-    auto inputPass = Input(password.get(), "Hasło", passOpt);
+    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption());
+    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true));
 
     auto btnOk = Button("Zaloguj", [this, &state, email, password, error] {
         if (m_auth.signIn(*email, *password)) {
             state.isSignedIn = true;
-            state.signedInUser = m_auth.getCurrentUser()->getEmail();
+            state.signedInUser = m_auth.getCurrentUser()->getFirstName();
             state.isLoginModalOpen = false;
             *error = "";
+            *password = "";
         } else {
             *error = "Błędny e-mail lub hasło";
         }
@@ -287,15 +313,15 @@ Component View::constructLoginModal(ApplicationState& state) {
     });
 
     return Renderer(container, [container, error] {
+        int i = 0;
         return window(text(" Logowanie "), vbox({
                 vbox({
-                    hbox(text("E-mail: "), container->ChildAt(0)->Render()),
-                    hbox(text("Hasło:  "), container->ChildAt(1)->Render()),
+                    hbox(text("E-mail: "), container->ChildAt(i++)->Render()),
+                    hbox(text("Hasło:  "), container->ChildAt(i++)->Render()),
                     text(*error) | color(Color::Red) | hcenter,
                     filler(),
                     container->ChildAt(2)->Render() | hcenter
-                }) | borderEmpty
-
+                }) | borderEmpty | color(Color::White)
             })) | size(WIDTH, EQUAL, 50) | clear_under | center;
     });
 } // View::constructLoginModal
@@ -309,12 +335,11 @@ Component View::constructRegisterModal(ApplicationState& state) {
     auto passwordConfirm = std::make_shared<std::string>();
     auto error = std::make_shared<std::string>("");
 
-    InputOption passOpt; passOpt.password = true;
-    auto inputEmail = Input(email.get(), "E-mail");
-    auto inputFirstName = Input(firstName.get(), "Imię");
-    auto inputLastName = Input(lastName.get(), "Nazwisko");
-    auto inputPass = Input(password.get(), "Hasło", passOpt);
-    auto inputPassConfirm = Input(passwordConfirm.get(), "Powtórz hasło", passOpt);
+    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption());
+    auto inputFirstName = Input(firstName.get(), "Imię", getWhiteInputOption());
+    auto inputLastName = Input(lastName.get(), "Nazwisko", getWhiteInputOption());
+    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true));
+    auto inputPassConfirm = Input(passwordConfirm.get(), "Powtórz hasło", getWhiteInputOption(true));
 
 
     auto btnOk = Button("Zarejestruj", [this, &state, email, firstName, lastName, password, passwordConfirm, error] {
@@ -353,17 +378,19 @@ Component View::constructRegisterModal(ApplicationState& state) {
     });
 
     return Renderer(container, [container, error] {
+        int i = 0;
+
         return window(text(" Rejestracja "), vbox({
                 vbox({
-                    hbox(text("E-mail:        "), container->ChildAt(0)->Render()),
-                    hbox(text("Imię:          "), container->ChildAt(1)->Render()),
-                    hbox(text("Nazwisko:      "), container->ChildAt(2)->Render()),
-                    hbox(text("Hasło:         "), container->ChildAt(3)->Render()),
-                    hbox(text("Powtórz hasło: "), container->ChildAt(4)->Render()),
+                    hbox(text("E-mail:        "), container->ChildAt(i++)->Render()),
+                    hbox(text("Imię:          "), container->ChildAt(i++)->Render()),
+                    hbox(text("Hasło:         "), container->ChildAt(i++)->Render()),
+                    hbox(text("Nazwisko:      "), container->ChildAt(i++)->Render()),
+                    hbox(text("Powtórz hasło: "), container->ChildAt(i++)->Render()),
                     text(*error) | color(Color::Red) | hcenter,
                     filler(),
                     container->ChildAt(5)->Render() | hcenter
-                }) | borderEmpty,
+                }) | borderEmpty | color(Color::White),
             })) | size(WIDTH, EQUAL, 50) | clear_under | center;
     });
 }
@@ -371,13 +398,14 @@ Component View::constructRegisterModal(ApplicationState& state) {
 
 // ====
 
-Component makePanel(std::string title, Component inner_content, std::function<bool()> is_focused_cb) {
-    return Renderer(inner_content, [title, inner_content, is_focused_cb] {
+Component makePanel(ApplicationState& state, std::string title, Component inner_content, std::function<bool()> is_focused_cb) {
+    return Renderer(inner_content, [title, inner_content, &state, is_focused_cb] {
 
         auto content = inner_content->Render() | color(Color::White);
         auto win = window(text(title) | bold | center, content);
 
-        if (is_focused_cb && is_focused_cb()) {
+        bool anyModalOpen = state.isLoginModalOpen || state.isRegisterModalOpen || state.isAccountSettingsModalOpen || state.isOrderAccountModalOpen;
+        if (is_focused_cb && is_focused_cb() && !anyModalOpen) {
             win = win | color(Color::Green);
         }
 
@@ -385,20 +413,92 @@ Component makePanel(std::string title, Component inner_content, std::function<bo
     });
 }
 
-Component makePanel(Component title_component, Component inner_content, std::function<bool()> is_focused_cb) {
+Component makePanel(ApplicationState& state, Component title_component, Component inner_content, std::function<bool()> is_focused_cb) {
     auto logical_tree = Container::Vertical({
         title_component,
         inner_content
     });
 
-    return Renderer(logical_tree, [title_component, inner_content, logical_tree, is_focused_cb] {
+    return Renderer(logical_tree, [title_component, inner_content, logical_tree, &state, is_focused_cb] {
         auto content = inner_content->Render() | color(Color::White);
         auto win = window(title_component->Render() | bold, content);
 
-        if (is_focused_cb && is_focused_cb()) {
+        bool anyModalOpen = state.isLoginModalOpen || state.isRegisterModalOpen || state.isAccountSettingsModalOpen || state.isOrderAccountModalOpen;
+        if (is_focused_cb && is_focused_cb() && !anyModalOpen) {
             win = win | color(Color::Green);
         }
 
         return win;
     });
 }
+
+Component View::constructAccountSettingsModal(ApplicationState& state) {
+    auto oldPassword = std::make_shared<std::string>();
+    auto newPassword = std::make_shared<std::string>();
+    auto confirmPassword = std::make_shared<std::string>();
+    auto message = std::make_shared<std::string>("");
+    auto isError = std::make_shared<bool>(false);
+
+    auto inputOldPass = Input(oldPassword.get(), "Stare hasło", getWhiteInputOption(true));
+    auto inputNewPass = Input(newPassword.get(), "Nowe hasło", getWhiteInputOption(true));
+    auto inputConfirmPass = Input(confirmPassword.get(), "Powtórz nowe hasło", getWhiteInputOption(true));
+
+    auto btnOk = Button("Zmień hasło", [this, &state, oldPassword, newPassword, confirmPassword, message, isError] {
+        if (newPassword->empty()) {
+            *message = "Nowe hasło nie może być puste";
+            *isError = true;
+            return;
+        }
+
+        if (*newPassword != *confirmPassword) {
+            *message = "Nowe hasła nie są identyczne";
+            *isError = true;
+            return;
+        }
+
+        if (m_auth.changePassword(m_auth.getCurrentUser()->getEmail(), *oldPassword, *newPassword)) {
+            *message = "Hasło zostało zmienione";
+            *isError = false;
+            *oldPassword = "";
+            *newPassword = "";
+            *confirmPassword = "";
+        } else {
+            *message = "Błędne stare hasło";
+            *isError = true;
+        }
+    }, ButtonOption::Ascii());
+
+    auto btnClose = Button("Zamknij", [&state, oldPassword, newPassword, confirmPassword, message] {
+        state.isAccountSettingsModalOpen = false;
+        *oldPassword = "";
+        *newPassword = "";
+        *confirmPassword = "";
+        *message = "";
+    }, ButtonOption::Ascii());
+
+    auto container = Container::Vertical({
+        inputOldPass,
+        inputNewPass,
+        inputConfirmPass,
+        Container::Horizontal({btnOk, btnClose}) | hcenter,
+    });
+
+    return Renderer(container, [container, message, isError] {
+        int i = 0;;
+
+        return window(text(" Ustawienia konta ") | bold | center,
+            vbox({
+                vbox({
+                    container->ChildAt(i++)->Render(),
+                    container->ChildAt(i++)->Render(),
+                    container->ChildAt(i++)->Render(),
+                    text(*message) | color(*isError ? Color::Red : Color::Green) | center,
+
+                    filler(),
+                    container->ChildAt(i++)->Render(),
+                }) | borderEmpty | color(Color::White),
+
+            })
+        ) | size(WIDTH, EQUAL, 40) | center | clear_under;
+    });
+} // View::constructAccountSettingsModal

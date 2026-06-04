@@ -54,12 +54,20 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         return true;
     }
 
-    // Do not process global navigation shortcuts if a modal is open
-    if (m_state.isLoginModalOpen || m_state.isRegisterModalOpen || m_state.isOrderAccountModalOpen) {
-        return false;
+    // If an input is focused, we should NOT process global shortcuts (like '0', '1')
+    // because the user is likely typing into the field.
+    bool inputFocused = false;
+    if (m_view.m_applicationView) {
+        // FTXUI components have a Focused() method. 
+        // We can check if the active modal or main view has a focused child that is an input.
+        // However, a simpler way in FTXUI is often to check the Event's target or
+        // use the screen's focus state if available.
+        // Given the current architecture, we'll check the top-level view.
+        inputFocused = m_view.m_applicationView->Focused();
     }
 
     if (e == ftxui::Event::Character('0')) {
+        if (inputFocused) return false; // Let the input handle it
         m_state.currentFocus = FocusKind::TOPBAR;
         m_view.getTopbar()->TakeFocus();
         return true;
@@ -67,6 +75,7 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 
 
     if (e == ftxui::Event::Character('1')) {
+        if (inputFocused) return false; // Let the input handle it
         m_state.currentFocus = cktofk(m_state.getCurrentContext().contextId);
         m_view.getContent()->TakeFocus();
         return true;
@@ -108,12 +117,12 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
     switch (focus) {
         case FocusKind::TOPBAR: {
             shortcuts.insert({
-                {Event::Character('z'), [this]{
-                    m_state.isLoginModalOpen = true;
+                {Event::Character('z'), []{
+                    // show popup with sign in screen
                 }},
 
-                {Event::Character('Z'), [this]{
-                    m_state.isRegisterModalOpen = true;
+                {Event::Character('Z'), []{
+                    // show popup with sign up screen
                 }},
 
                 {Event::Backspace, [this] {

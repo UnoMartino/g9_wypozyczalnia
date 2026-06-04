@@ -16,6 +16,23 @@
 
 // ====
 
+static InputOption getWhiteInputOption(bool isPassword = false) {
+    InputOption opt;
+    opt.password = isPassword;
+    opt.transform = [](InputState state) {
+        if (state.is_placeholder) {
+            state.element |= dim;
+        }
+        if (state.focused) {
+            state.element |= bgcolor(Color::White) | color(Color::Black);
+        } else if (state.hovered) {
+            state.element |= underlined;
+        }
+        return state.element;
+    };
+    return opt;
+}
+
 Component constructDetails(Vehicle* vehicle) {
     return Renderer([vehicle]{
         Elements details;
@@ -111,9 +128,9 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
     auto isCalendarOpen = std::make_shared<bool>(false);
     auto errorMessage = std::make_shared<std::string>("");
 
-    auto firstNameInput = Input(&(order->firstName), "Wpisz imię");
-    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko");
-    auto emailInput = Input(&(order->email), "Wpisz adres e-mail");
+    auto firstNameInput = Input(&(order->firstName), "Wpisz imię", getWhiteInputOption());
+    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko", getWhiteInputOption());
+    auto emailInput = Input(&(order->email), "Wpisz adres e-mail", getWhiteInputOption());
     auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
 
     auto createAccount = std::make_shared<bool>(false);
@@ -219,9 +236,8 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
             }) | hcenter,
         }) | borderEmpty | flex;
 
-        auto shieldedContent = innerContent | color(Color::White);
         auto title = text(" Konfiguracja wynajmu: " + vehicle->getName() + " ") | bold | color(Color::DeepSkyBlue1);
-        auto formWindow = window(title, shieldedContent) | flex | size(WIDTH, EQUAL, 60);
+        auto formWindow = window(title, innerContent | color(Color::White)) | flex | size(WIDTH, EQUAL, 60);
 
         if (isFocused) {
             return formWindow | color(Color::Green);
@@ -255,8 +271,7 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
     // Password modal for account creation during order
     auto password = std::make_shared<std::string>();
     auto passwordError = std::make_shared<std::string>("");
-    InputOption passOpt; passOpt.password = true;
-    auto passwordInput = Input(password.get(), "Hasło", passOpt);
+    auto passwordInput = Input(password.get(), "Hasło", getWhiteInputOption(true));
 
     auto confirmAccountBtn = Button("Utwórz konto i zamów", [&state, &auth, order, password, passwordError, action]{
         if (password->empty()) {
