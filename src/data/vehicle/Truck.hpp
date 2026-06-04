@@ -7,10 +7,17 @@
 // ====
 
 enum TrailerType {
-    Rerfrigerated,
+    Refrigerated,
     Tank,
     Dry,
 };
+
+NLOHMANN_JSON_SERIALIZE_ENUM(TrailerType, {
+    {Dry, nullptr},
+    {Refrigerated, 0},
+    {Tank, 1},
+    {Dry, 2}
+})
 
 struct TruckData {
     VehicleData base;
@@ -30,7 +37,7 @@ private:
 
     std::string typeToString(TrailerType t) const {
         switch (t) {
-            case Rerfrigerated: return "Chłodnia";
+            case Refrigerated: return "Chłodnia";
             case Tank: return "Cysterna";
             case Dry: return "TIR";
             default: return "BŁĄD";

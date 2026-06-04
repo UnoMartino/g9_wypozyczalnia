@@ -134,7 +134,7 @@ View::View(ApplicationState& state) {
                     postcard_container->TakeFocus();
                 }
                 return hbox({
-                    postcard_container->Render(),
+                    postcard_container->Render() | vscroll_indicator | yframe,
                     rightPanel->Render(),
                 }) | flex | hcenter;
             }
@@ -163,14 +163,19 @@ View::View(ApplicationState& state) {
 
     });
 
-    auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar, [&state](){
+    auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar | xflex, [&state](){
         return state.currentFocus == FocusKind::TOPBAR;
     });
     auto contentPanel = makePanel(Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
         return state.currentFocus == cktofk(state.getCurrentContext().contextId);
     });
 
-    auto combinedLayout = Container::Vertical({ topbarPanel, contentPanel });
+    auto combinedLayout = Renderer(Container::Vertical({ topbarPanel, contentPanel }), [topbarPanel, contentPanel] {
+        return vbox({
+            topbarPanel->Render(),
+            contentPanel->Render() | flex,
+        });
+    });
 
     auto mainPanel =  makePanel("Wypożyczalnia Januszex", combinedLayout, nullptr);
 
