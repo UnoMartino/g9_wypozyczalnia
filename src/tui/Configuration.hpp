@@ -14,6 +14,8 @@
 
 using namespace ftxui;
 
+class AuthManager;
+
 // =====
 
-Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel);
+Component constructConfigurationForm(ApplicationState& state, AuthManager& auth, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel);

@@ -15,10 +15,17 @@ private:
 
     size_t hashPassword(const std::string& password) const;
 
-public:
-    AuthManager() = default;
+    void loadUsers();
+    void saveUsers();
 
-    bool signUp(const std::string& login, const std::string& password);
-    bool signIn(const std::string& login, const std::string& password);
+public:
+    AuthManager() { loadUsers(); }
+    ~AuthManager() { saveUsers(); }
+
+    bool signUp(const std::string& email, const std::string& password, const std::string& firstName = "", const std::string& lastName = "");
+    bool signIn(const std::string& email, const std::string& password);
     void logout();
+
+    User* getCurrentUser() { return m_currentUser; }
+    bool isUserExists(const std::string& email) { return m_users.find(email) != m_users.end(); }
 };

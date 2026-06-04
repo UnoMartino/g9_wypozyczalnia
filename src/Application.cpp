@@ -17,7 +17,7 @@
 
 // ====
 
-Application::Application() : m_view(m_state) {
+Application::Application() : m_view(m_state, m_auth) {
     m_state.currentCalendarState = m_state.systemCalendarState;
 
     // populate reservations from loaded orders
@@ -52,6 +52,11 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         screen.ExitLoopClosure()();
         shutdown();
         return true;
+    }
+
+    // Do not process global navigation shortcuts if a modal is open
+    if (m_state.isLoginModalOpen || m_state.isRegisterModalOpen || m_state.isOrderAccountModalOpen) {
+        return false;
     }
 
     if (e == ftxui::Event::Character('0')) {
@@ -103,12 +108,12 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
     switch (focus) {
         case FocusKind::TOPBAR: {
             shortcuts.insert({
-                {Event::Character('z'), []{
-                    // show popup with sign in screen
+                {Event::Character('z'), [this]{
+                    m_state.isLoginModalOpen = true;
                 }},
 
-                {Event::Character('Z'), []{
-                    // show popup with sign up screen
+                {Event::Character('Z'), [this]{
+                    m_state.isRegisterModalOpen = true;
                 }},
 
                 {Event::Backspace, [this] {

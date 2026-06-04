@@ -5,6 +5,7 @@
 #include "OrderSummary.hpp"
 
 #include "../Application.hpp"
+#include "../util/Auth.hpp"
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_options.hpp"
 #include "ftxui/component/screen_interactive.hpp"
@@ -23,32 +24,42 @@ Component makePanel(std::string title, Component inner_content, std::function<bo
 
 // =====
 
-View::View(ApplicationState& state) {
+View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
     m_breadcrumbs = Container::Horizontal({});
 
     rebuildBreadcrumbs(state);
 
     auto topbarLogic = Renderer(m_breadcrumbs, [this, &state] () {
+        std::string userDisplay = "Zalogowano: " + state.signedInUser;
+        auto userText = text(userDisplay) | color(Color::Blue);
 
-        if (state.isSignedIn) {
-            return hbox({
-                hbox({
-                    m_breadcrumbs->Render(),
-                    filler(),
-                    text("Zalogowano: Gość") | color(Color::Blue)
-                }) | borderEmpty | flex
-            }) | flex;
+        return hbox({
+            m_breadcrumbs->Render(),
+            filler(),
+            userText
+        }) | borderEmpty | flex;
+    });
 
-        } else {
-            return hbox({
-                hbox({
-                    m_breadcrumbs->Render(),
-                    filler(),
-                    text("Zalogowano: Gość") | color(Color::Blue)
-                }) | borderEmpty | flex
-            }) | flex;
+    auto btnLogin = Button("Zaloguj", [&state] { state.isLoginModalOpen = true; }, ButtonOption::Ascii());
+    auto btnRegister = Button("Utwórz konto", [&state] { state.isRegisterModalOpen = true; }, ButtonOption::Ascii());
+    auto btnLogout = Button("Wyloguj", [this, &state] {
+        m_auth.logout();
+        state.isSignedIn = false;
+        state.signedInUser = "guest";
+    }, ButtonOption::Ascii());
 
-        }
+    auto authComponents = Container::Horizontal({
+        Maybe(Container::Horizontal({btnLogin, btnRegister}), [&state]{ return !state.isSignedIn; }),
+        Maybe(Container::Horizontal({btnLogout}), [&state]{ return state.isSignedIn; }),
+    });
+
+    auto authLogic = Renderer(authComponents, [authComponents] {
+        return authComponents->Render() | vcenter;
+    });
+
+    m_topbar = Container::Horizontal({
+        topbarLogic,
+        authLogic
     });
 
     Components postcards;
@@ -66,7 +77,7 @@ View::View(ApplicationState& state) {
             state.selectionStep = 0;
 
             configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(state, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
+            configuration->Add(constructConfigurationForm(state, m_auth, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
                 state.orders.push_back(*finalOrder);
                 saveOrders(state.orders);
 
@@ -153,14 +164,8 @@ View::View(ApplicationState& state) {
         }
     });
 
-
-    m_topbar = Container::Horizontal({
-        topbarLogic
-    }) ;
-
     m_content = Container::Vertical({
         contentLogic | flex | hcenter,
-
     });
 
     auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar, [&state](){
@@ -174,7 +179,12 @@ View::View(ApplicationState& state) {
 
     auto mainPanel =  makePanel("Wypożyczalnia Januszex", combinedLayout, nullptr);
 
+    auto loginModal = constructLoginModal(state);
+    auto registerModal = constructRegisterModal(state);
+
     m_applicationView = mainPanel;
+    m_applicationView = Modal(m_applicationView, loginModal, &state.isLoginModalOpen);
+    m_applicationView = Modal(m_applicationView, registerModal, &state.isRegisterModalOpen);
 
 } // View::View
 
@@ -246,6 +256,118 @@ void View::rebuildBreadcrumbs(ApplicationState& state) {
         }
     }
 } // View::rebuildBreadcrumbs
+
+
+Component View::constructLoginModal(ApplicationState& state) {
+    auto email = std::make_shared<std::string>();
+    auto password = std::make_shared<std::string>();
+    auto error = std::make_shared<std::string>("");
+
+    InputOption passOpt; passOpt.password = true;
+    auto inputEmail = Input(email.get(), "E-mail");
+    auto inputPass = Input(password.get(), "Hasło", passOpt);
+
+    auto btnOk = Button("Zaloguj", [this, &state, email, password, error] {
+        if (m_auth.signIn(*email, *password)) {
+            state.isSignedIn = true;
+            state.signedInUser = m_auth.getCurrentUser()->getEmail();
+            state.isLoginModalOpen = false;
+            *error = "";
+        } else {
+            *error = "Błędny e-mail lub hasło";
+        }
+    }, ButtonOption::Ascii());
+
+    auto btnCancel = Button("Anuluj", [&state] { state.isLoginModalOpen = false; }, ButtonOption::Ascii());
+
+    auto container = Container::Vertical({
+        inputEmail,
+        inputPass,
+        Container::Horizontal({btnOk, btnCancel})
+    });
+
+    return Renderer(container, [container, error] {
+        return window(text(" Logowanie "), vbox({
+                vbox({
+                    hbox(text("E-mail: "), container->ChildAt(0)->Render()),
+                    hbox(text("Hasło:  "), container->ChildAt(1)->Render()),
+                    text(*error) | color(Color::Red) | hcenter,
+                    filler(),
+                    container->ChildAt(2)->Render() | hcenter
+                }) | borderEmpty
+
+            })) | size(WIDTH, EQUAL, 50) | clear_under | center;
+    });
+} // View::constructLoginModal
+
+Component View::constructRegisterModal(ApplicationState& state) {
+
+    auto email = std::make_shared<std::string>();
+    auto firstName = std::make_shared<std::string>();
+    auto lastName = std::make_shared<std::string>();
+    auto password = std::make_shared<std::string>();
+    auto passwordConfirm = std::make_shared<std::string>();
+    auto error = std::make_shared<std::string>("");
+
+    InputOption passOpt; passOpt.password = true;
+    auto inputEmail = Input(email.get(), "E-mail");
+    auto inputFirstName = Input(firstName.get(), "Imię");
+    auto inputLastName = Input(lastName.get(), "Nazwisko");
+    auto inputPass = Input(password.get(), "Hasło", passOpt);
+    auto inputPassConfirm = Input(passwordConfirm.get(), "Powtórz hasło", passOpt);
+
+
+    auto btnOk = Button("Zarejestruj", [this, &state, email, firstName, lastName, password, passwordConfirm, error] {
+        if (email->empty() || password->empty() || firstName->empty() || lastName->empty()) {
+            *error = "Pola nie mogą być puste";
+            return;
+        }
+
+        if (*password != *passwordConfirm) {
+            *error = "Hasła nie są identyczne";
+            return;
+        }
+
+        if (m_auth.signUp(*email, *password, *firstName, *lastName)) {
+            *error = "";
+            state.isRegisterModalOpen = false;
+
+            m_auth.signIn(*email, *password);
+            state.isSignedIn = true;
+            state.signedInUser = m_auth.getCurrentUser()->getEmail();
+
+        } else {
+            *error = "Taki użytkownik już istnieje";
+        }
+    }, ButtonOption::Ascii());
+
+    auto btnCancel = Button("Anuluj", [&state] { state.isRegisterModalOpen = false; }, ButtonOption::Ascii());
+
+    auto container = Container::Vertical({
+        inputEmail,
+        inputFirstName,
+        inputLastName,
+        inputPass,
+        inputPassConfirm,
+        Container::Horizontal({btnOk, btnCancel})
+    });
+
+    return Renderer(container, [container, error] {
+        return window(text(" Rejestracja "), vbox({
+                vbox({
+                    hbox(text("E-mail:        "), container->ChildAt(0)->Render()),
+                    hbox(text("Imię:          "), container->ChildAt(1)->Render()),
+                    hbox(text("Nazwisko:      "), container->ChildAt(2)->Render()),
+                    hbox(text("Hasło:         "), container->ChildAt(3)->Render()),
+                    hbox(text("Powtórz hasło: "), container->ChildAt(4)->Render()),
+                    text(*error) | color(Color::Red) | hcenter,
+                    filler(),
+                    container->ChildAt(5)->Render() | hcenter
+                }) | borderEmpty,
+            })) | size(WIDTH, EQUAL, 50) | clear_under | center;
+    });
+}
+
 
 // ====
 

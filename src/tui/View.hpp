@@ -8,6 +8,7 @@
 // ====
 
 typedef struct ApplicationState ApplicationState;
+class AuthManager;
 
 using namespace ftxui;
 
@@ -17,6 +18,8 @@ class View {
 private:
 
     // Component m_mainContainer;
+
+    AuthManager& m_auth;
 
     Component m_topbar;
     Component m_content;
@@ -30,7 +33,7 @@ public:
 
     Component m_applicationView;
 
-    View(ApplicationState& state);
+    View(ApplicationState& state, AuthManager& auth);
     ~View() {}
 
     void constructFooter(ApplicationState& state);
@@ -41,5 +44,8 @@ public:
     Component getFooter() { return m_footer; }
 
     void rebuildBreadcrumbs(ApplicationState& state);
+
+    Component constructLoginModal(ApplicationState& state);
+    Component constructRegisterModal(ApplicationState& state);
 
 }; // View
