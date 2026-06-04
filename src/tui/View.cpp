@@ -192,7 +192,7 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         contentLogic | flex | hcenter,
     });
 
-    auto topbarPanel = makePanel(" [0] Nawigacja", m_topbar | xflex, [&state](){
+    auto topbarPanel = makePanel(state, " [0] Nawigacja", m_topbar, [&state](){
         return state.currentFocus == FocusKind::TOPBAR;
     });
     auto contentPanel = makePanel(state, Renderer([&state]{ return text(" [1] " + state.getCurrentContext().label); }), m_content, [&state]() {
