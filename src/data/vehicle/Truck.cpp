@@ -21,8 +21,11 @@ std::unique_ptr<Truck> Truck::fromJSON(const json& j) {
     data.base.needsService = j.at("needsService").get<bool>();
     data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
+    data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
 
-    data.maxPayloadKg = j.at("maxPayloadKg").get<int>();
+    data.maxPayloadKg = j.at("maxPayloadKg").get<uint32_t>();
+    data.trailerType = j.at("trailerType").get<TrailerType>();
+    data.hasSleeperCab = j.at("hasSleeperCab").get<bool>();
 
     return std::make_unique<Truck>(std::move(data));
 } // Truck::fromJSON

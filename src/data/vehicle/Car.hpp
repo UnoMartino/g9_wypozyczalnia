@@ -10,6 +10,15 @@ enum BodyStyle {
     Sedan, SUV, StateWagon, Hatchback, None
 };
 
+NLOHMANN_JSON_SERIALIZE_ENUM(BodyStyle, {
+    {None, nullptr},
+    {Sedan, 0},
+    {SUV, 1},
+    {StateWagon, 2},
+    {Hatchback, 3},
+    {None, 4}
+})
+
 struct CarData {
     VehicleData base;
 
@@ -35,7 +44,7 @@ private:
             case SUV: return "SUV";
             case StateWagon: return "Kombi";
             case Hatchback: return "Hatchback";
-            default: return "Unknown";
+            default: return "Nieznany";
         }
     }
 

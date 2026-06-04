@@ -20,6 +20,17 @@ std::unique_ptr<Car> Car::fromJSON(const json& j) {
     data.base.needsService = j.at("needsService").get<bool>();
     data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
+    data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
+
+    if (j.contains("trunkCapacityLiters")) {
+        data.trunkCapacityLiters = j.at("trunkCapacityLiters").get<int>();
+    }
+    if (j.contains("bodyStyle")) {
+        data.bodyStyle = j.at("bodyStyle").get<BodyStyle>();
+    }
+    if (j.contains("isElectric")) {
+        data.isElectric = j.at("isElectric").get<bool>();
+    }
 
     //data.passengerCapacity = j.at("passengerCapacity").get<int>();
 
