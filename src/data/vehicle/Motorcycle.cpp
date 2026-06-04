@@ -20,8 +20,11 @@ std::unique_ptr<Motorcycle> Motorcycle::fromJSON(const json& j) {
     data.base.needsService = j.at("needsService").get<bool>();
     data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
+    data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
 
-    data.hasSidecar = j.at("hasSidecar").get<int>();
+    data.hasSidecar = j.at("hasSidecar").get<bool>();
+    data.requiresFullLicense = j.at("requiresFullLicense").get<bool>();
+    data.hasLuggagePanniers = j.at("hasLuggagePanniers").get<bool>();
 
     return std::make_unique<Motorcycle>(std::move(data));
 } // Motorcycle::fromJSON
