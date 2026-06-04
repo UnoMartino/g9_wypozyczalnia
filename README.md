@@ -6,13 +6,16 @@
 
 Projekt korzysta z customowego systemu budowania opertego na `nob.h`. Pozwala to pominąc grzebanie w CMake.
 Skrypt sam pobiera pliki `.cpp` z katalogu `src/` i odtwarza strukturę w `build/obj/`
+Próbując skompilować projekt, system operacyjny musi mieć ustawione odpowiednie zmienne środowiskowe `CC` oraz `CXX`, które wskazuja na odpowiednie kompilatory C/C++.
 
 ### Linux / macOS
 ```sh
-./build.sh <action> <mode>
+./build.sh (flag) <action> <mode>
 ```
 ### Windows 
-TBD
+```bat
+.\build.bat (flag) <action> <mode>
+```
 
 ### Flagi
 
@@ -21,7 +24,7 @@ TBD
 ### Parametry 
 
 **action:**
-- `build` - domyślnie, kompiluje i linkuje projekt, tworzac plik wykonywalny w folderze `build/`
+- `build` - domyślnie, kompiluje i linkuje projekt (jeśli są zmiany), tworząc plik wykonywalny w folderze `build/`
 - `run` - buduje projekt (jeśli są zmiany) i od razu uruchamia plik wykonywalny. Wszystkie parametry podane po `<mode>` zosataną bezpośrednio przekazane
 do programu
 - `clean` - czyści wszystko z `build/obj/` oraz sam plik wykonywalny
