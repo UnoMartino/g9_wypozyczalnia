@@ -6,3 +6,4 @@ compile_commands.json
 .vscode/*
 .DS_Store
 orders.json
+users.json

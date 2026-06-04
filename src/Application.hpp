@@ -74,6 +74,11 @@ struct ApplicationState {
     bool isSignedIn = false;
     std::string signedInUser = "guest";
 
+    bool isLoginModalOpen = false;
+    bool isRegisterModalOpen = false;
+    bool isOrderAccountModalOpen = false;
+    bool isAccountSettingsModalOpen = false;
+
     // view management
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
 

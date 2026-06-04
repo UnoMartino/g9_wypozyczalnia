@@ -3,6 +3,8 @@
 
 #include "../data/Calc.hpp"
 #include "../data/Util.hpp"
+#include "../util/Auth.hpp"
+#include "../util/User.hpp"
 
 #include "ftxui/component/app.hpp"
 #include "ftxui/component/component.hpp"
@@ -13,6 +15,23 @@
 #include <functional>
 
 // ====
+
+static InputOption getWhiteInputOption(bool isPassword = false) {
+    InputOption opt;
+    opt.password = isPassword;
+    opt.transform = [](InputState state) {
+        if (state.is_placeholder) {
+            state.element |= dim;
+        }
+        if (state.focused) {
+            state.element |= bgcolor(Color::White) | color(Color::Black);
+        } else if (state.hovered) {
+            state.element |= underlined;
+        }
+        return state.element;
+    };
+    return opt;
+}
 
 Component constructDetails(Vehicle* vehicle) {
     return Renderer([vehicle]{
@@ -95,18 +114,28 @@ Component constructSummary(ApplicationState& state, Vehicle* vehicle, std::share
     });
 }
 
-Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel) {
+Component constructConfigurationForm(ApplicationState& state, AuthManager& auth, Vehicle* vehicle, std::function<void(std::shared_ptr<Order>)> action, std::function<void()> onCancel) {
 
     auto order = std::make_shared<Order>();
     order->vehicleId = vehicle->getId();
 
+    if (state.isSignedIn && auth.getCurrentUser()) {
+        order->firstName = auth.getCurrentUser()->getFirstName();
+        order->lastName = auth.getCurrentUser()->getLastName();
+        order->email = auth.getCurrentUser()->getEmail();
+    }
+
     auto isCalendarOpen = std::make_shared<bool>(false);
     auto errorMessage = std::make_shared<std::string>("");
 
-    auto firstNameInput = Input(&(order->firstName), "Wpisz imię");
-    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko");
-    auto emailInput = Input(&(order->email), "Wpisz adres e-mail");
+    auto firstNameInput = Input(&(order->firstName), "Wpisz imię", getWhiteInputOption());
+    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko", getWhiteInputOption());
+    auto emailInput = Input(&(order->email), "Wpisz adres e-mail", getWhiteInputOption());
     auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
+
+    auto createAccount = std::make_shared<bool>(false);
+    auto createAccountCheckbox = Checkbox("Utwórz konto", createAccount.get());
+    auto maybeCreateAccount = Maybe(createAccountCheckbox, [&state]{ return !state.isSignedIn; });
 
     auto dateBtn = Button("Wybierz zakres dat", [isCalendarOpen]{
         *isCalendarOpen = true;
@@ -114,7 +143,7 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
 
     auto cancelBtn = Button("Anuluj", onCancel, ButtonOption::Ascii());
 
-    auto submitBtn = Button("Potwierdź i zapłać", [&state, vehicle, action, order, errorMessage]{
+    auto submitBtn = Button("Potwierdź i zapłać", [&state, &auth, vehicle, action, order, errorMessage, createAccount]{
         if (order->firstName.empty() || order->lastName.empty() || order->email.empty()) {
             *errorMessage = "Wypełnij wszystkie pola tekstowe";
             return;
@@ -139,66 +168,76 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
         }
 
         *errorMessage = ""; // Czysto, puszczamy akcję dalej
-        action(order);
+
+        if (*createAccount && !state.isSignedIn) {
+            if (auth.isUserExists(order->email)) {
+                *errorMessage = "Użytkownik z tym e-mailem już istnieje";
+                return;
+            }
+            state.isOrderAccountModalOpen = true;
+        } else {
+            action(order);
+        }
     }, ButtonOption::Ascii());
 
     auto mileageRadio = Radiobox(&(order->mileageOptions), &(order->mileageTier), RadioboxOption::Simple());
 
     auto formLayout = Container::Vertical({
-        firstNameInput, // 1
-        lastNameInput,  // 2
-        emailInput,     // 3
-        dateBtn,        // 4
-        mileageRadio,   // 5
-        insurance,      // 6
+        firstNameInput, // 0
+        lastNameInput,  // 1
+        emailInput,     // 2
+        dateBtn,        // 3
+        mileageRadio,   // 4
+        insurance,      // 5
+        maybeCreateAccount, // 6
         submitBtn,      // 7
         cancelBtn       // 8
     });
 
     auto styledForm = Renderer(formLayout, [&state, order, formLayout, vehicle, errorMessage]{
         bool isFocused = formLayout->Focused();
-        int i = 0;
 
         auto errorDisplay = errorMessage->empty()
             ? text("")
             : text(*errorMessage) | color(Color::Red) | bold | hcenter;
 
         auto dateDisplay = (state.rangeStart && state.rangeEnd)
-            ? text(order->rentRange.toString()) | color(Color::GrayDark)
+            ? text(format_date(*state.rangeStart) + " - " + format_date(*state.rangeEnd)) | color(Color::GrayDark)
             : text("Nie wybrano") | color(Color::GrayDark);
 
         auto innerContent = vbox({
             text("Dane klienta:") | bold,
-            hbox({ text("Imię: "), formLayout->ChildAt(i++)->Render()}),
-            hbox({ text("Nazwisko: "), formLayout->ChildAt(i++)->Render()}),
-            hbox({ text("E-mail: "), formLayout->ChildAt(i++)->Render()}),
+            hbox({ text("Imię: "), formLayout->ChildAt(0)->Render()}),
+            hbox({ text("Nazwisko: "), formLayout->ChildAt(1)->Render()}),
+            hbox({ text("E-mail: "), formLayout->ChildAt(2)->Render()}),
 
             separator(),
             text("Okres wynajmu:") | bold,
-            hbox({ formLayout->ChildAt(i++)->Render(), filler(), dateDisplay }),
+            hbox({ formLayout->ChildAt(3)->Render(), filler(), dateDisplay }),
 
             separator(),
 
             text("Limit:") | bold,
-            formLayout->ChildAt(i++)->Render(),
+            formLayout->ChildAt(4)->Render(),
 
             separator(),
             text("Opcje dodatkowe:") | bold,
-            formLayout->ChildAt(i++)->Render(),
+            formLayout->ChildAt(5)->Render(),
+
+            formLayout->ChildAt(6)->Render(),
 
             filler(),
             errorDisplay,
             separator(),
             hbox({
-                formLayout->ChildAt(i++)->Render() | flex,
+                formLayout->ChildAt(7)->Render() | flex,
                 text(" "),
-                formLayout->ChildAt(i++)->Render() | flex,
+                formLayout->ChildAt(8)->Render() | flex,
             }) | hcenter,
         }) | borderEmpty | flex;
 
-        auto shieldedContent = innerContent | color(Color::White);
         auto title = text(" Konfiguracja wynajmu: " + vehicle->getName() + " ") | bold | color(Color::DeepSkyBlue1);
-        auto formWindow = window(title, shieldedContent) | flex | size(WIDTH, EQUAL, 60);
+        auto formWindow = window(title, innerContent | color(Color::White)) | flex | size(WIDTH, EQUAL, 60);
 
         if (isFocused) {
             return formWindow | color(Color::Green);
@@ -227,13 +266,56 @@ Component constructConfigurationForm(ApplicationState& state, Vehicle* vehicle, 
         })) | clear_under | center;
     });
 
-    auto formWithModal = Modal(styledForm, modalRenderer, isCalendarOpen.get());
+    auto formWithCalendar = Modal(styledForm, modalRenderer, isCalendarOpen.get());
 
-    // formWithModal is the only interactive root here.
-    auto final = Renderer(formWithModal, [formWithModal, detailsPanel, summaryPanel]{
+    // Password modal for account creation during order
+    auto password = std::make_shared<std::string>();
+    auto passwordError = std::make_shared<std::string>("");
+    auto passwordInput = Input(password.get(), "Hasło", getWhiteInputOption(true));
+
+    auto confirmAccountBtn = Button("Utwórz konto i zamów", [&state, &auth, order, password, passwordError, action]{
+        if (password->empty()) {
+            *passwordError = "Hasło nie może być puste";
+            return;
+        }
+        if (auth.signUp(order->email, *password, order->firstName, order->lastName)) {
+            state.isOrderAccountModalOpen = false;
+            auth.signIn(order->email, *password);
+            state.isSignedIn = true;
+            state.signedInUser = auth.getCurrentUser()->getEmail();
+            action(order);
+        } else {
+            *passwordError = "Użytkownik już istnieje";
+        }
+    }, ButtonOption::Ascii());
+
+    auto cancelAccountBtn = Button("Anuluj", [&state]{ state.isOrderAccountModalOpen = false; }, ButtonOption::Ascii());
+
+    auto passModalContainer = Container::Vertical({
+        passwordInput,
+        confirmAccountBtn,
+        cancelAccountBtn
+    });
+
+    auto passModalRenderer = Renderer(passModalContainer, [passModalContainer, passwordError]{
+        return window(text(" Utwórz hasło dla konta "), vbox({
+            hbox(text("Hasło: "), passModalContainer->ChildAt(0)->Render()),
+            text(*passwordError) | color(Color::Red),
+            hbox({
+                passModalContainer->ChildAt(1)->Render(),
+                text(" "),
+                passModalContainer->ChildAt(2)->Render()
+            }) | hcenter
+        })) | clear_under | center;
+    });
+
+    auto formWithPass = Modal(formWithCalendar, passModalRenderer, &state.isOrderAccountModalOpen);
+
+    // formWithPass is the only interactive root here.
+    auto final = Renderer(formWithPass, [formWithPass, detailsPanel, summaryPanel]{
         return hbox({
             detailsPanel->Render(),
-            formWithModal->Render(),
+            formWithPass->Render(),
             summaryPanel->Render()
         }) | flex;
     });
