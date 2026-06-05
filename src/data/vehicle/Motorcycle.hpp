@@ -34,4 +34,6 @@ public:
         };
     };
 
+    json toJSON() const override;
+
 }; // Motorcycle

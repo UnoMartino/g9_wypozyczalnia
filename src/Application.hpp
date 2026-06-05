@@ -209,15 +209,17 @@ static std::unique_ptr<Vehicle> parseVehicle(const json& item) {
 
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
     json data = loadFile("./data.json");
-    if (data.is_null() || data.empty()) {
+    if (data.is_null() || !data.is_array()) {
         return {};
     }
 
     std::vector<std::unique_ptr<Vehicle>> vehicles;
     for (const auto& item : data) {
-        if (auto vehicle = parseVehicle(item)) {
-            vehicles.push_back(std::move(vehicle));
-        }
+        try {
+            if (auto vehicle = parseVehicle(item)) {
+                vehicles.push_back(std::move(vehicle));
+            }
+        } catch (...) {}
     }
 
     return vehicles;
@@ -225,16 +227,17 @@ static std::vector<std::unique_ptr<Vehicle>> loadVehicles() {
 
 static std::vector<Order> loadOrders() {
     json data = loadFile("./orders.json");
-    if (data.is_null() || data.empty()) {
+    if (data.is_null() || !data.is_array()) {
         return {};
     }
 
     std::vector<Order> orders;
     for (const auto& item : data) {
-
-        Order order;
-        from_json(item, order);
-        orders.push_back(std::move(order));
+        try {
+            Order order;
+            from_json(item, order);
+            orders.push_back(std::move(order));
+        } catch (...) {}
     }
 
     return orders;

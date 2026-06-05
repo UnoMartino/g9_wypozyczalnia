@@ -18,7 +18,6 @@ std::unique_ptr<Car> Car::fromJSON(const json& j) {
 
     data.base.mileage = j.at("mileage").get<uint32_t>();
     data.base.needsService = j.at("needsService").get<bool>();
-    data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
     data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
 
@@ -49,3 +48,19 @@ void Car::printInfo() const {
               //<< "Miejsca: " << m_passengerCapacity << " osob\n";
 
 } // Car::printInfo
+
+json Car::toJSON() const {
+    json j = getCommonJSON();
+    j["trunkCapacityLiters"] = m_trunkCapacityLiters;
+    
+    // Reverse map body style
+    BodyStyle bs = None;
+    if (m_bodyStyle == "Sedan") bs = Sedan;
+    else if (m_bodyStyle == "SUV") bs = SUV;
+    else if (m_bodyStyle == "Kombi") bs = StateWagon;
+    else if (m_bodyStyle == "Hatchback") bs = Hatchback;
+    
+    j["bodyStyle"] = bs;
+    j["isElectric"] = m_isElectric;
+    return j;
+}

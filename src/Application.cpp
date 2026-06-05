@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <fstream>
 
 // ====
 
@@ -54,15 +55,9 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         return true;
     }
 
-    // If an input is focused, we should NOT process global shortcuts (like '0', '1')
-    // because the user is likely typing into the field.
+    // if an input is focused, the application should not process global shortcuts
     bool inputFocused = false;
     if (m_view.m_applicationView) {
-        // FTXUI components have a Focused() method. 
-        // We can check if the active modal or main view has a focused child that is an input.
-        // However, a simpler way in FTXUI is often to check the Event's target or
-        // use the screen's focus state if available.
-        // Given the current architecture, we'll check the top-level view.
         inputFocused = m_view.m_applicationView->Focused();
     }
 

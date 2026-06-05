@@ -16,9 +16,13 @@
 
 // ====
 
-static InputOption getWhiteInputOption(bool isPassword = false) {
+static InputOption getWhiteInputOption(bool isPassword = false, std::function<void()> on_enter = nullptr) {
     InputOption opt;
     opt.password = isPassword;
+    opt.multiline = false;
+    if (on_enter) {
+        opt.on_enter = on_enter;
+    }
     opt.transform = [](InputState state) {
         if (state.is_placeholder) {
             state.element |= dim;
@@ -127,23 +131,10 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
 
     auto isCalendarOpen = std::make_shared<bool>(false);
     auto errorMessage = std::make_shared<std::string>("");
-
-    auto firstNameInput = Input(&(order->firstName), "Wpisz imię", getWhiteInputOption());
-    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko", getWhiteInputOption());
-    auto emailInput = Input(&(order->email), "Wpisz adres e-mail", getWhiteInputOption());
-    auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
-
     auto createAccount = std::make_shared<bool>(false);
-    auto createAccountCheckbox = Checkbox("Utwórz konto", createAccount.get());
-    auto maybeCreateAccount = Maybe(createAccountCheckbox, [&state]{ return !state.isSignedIn; });
 
-    auto dateBtn = Button("Wybierz zakres dat", [isCalendarOpen]{
-        *isCalendarOpen = true;
-    }, ButtonOption::Ascii());
 
-    auto cancelBtn = Button("Anuluj", onCancel, ButtonOption::Ascii());
-
-    auto submitBtn = Button("Potwierdź i zapłać", [&state, &auth, vehicle, action, order, errorMessage, createAccount]{
+    auto submitBtnAction = [&state, &auth, vehicle, action, order, errorMessage, createAccount]{
         if (order->firstName.empty() || order->lastName.empty() || order->email.empty()) {
             *errorMessage = "Wypełnij wszystkie pola tekstowe";
             return;
@@ -178,7 +169,23 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
         } else {
             action(order);
         }
+    };
+
+    auto firstNameInput = Input(&(order->firstName), "Wpisz imię", getWhiteInputOption(false, submitBtnAction));
+    auto lastNameInput = Input(&(order->lastName), "Wpisz nazwisko", getWhiteInputOption(false, submitBtnAction));
+    auto emailInput = Input(&(order->email), "Wpisz adres e-mail", getWhiteInputOption(false, submitBtnAction));
+    auto insurance = Checkbox("Pełne ubezpieczenie", &(order->wantsInsurance));
+
+    auto createAccountCheckbox = Checkbox("Utwórz konto", createAccount.get());
+    auto maybeCreateAccount = Maybe(createAccountCheckbox, [&state]{ return !state.isSignedIn; });
+
+    auto dateBtn = Button("Wybierz zakres dat", [isCalendarOpen]{
+        *isCalendarOpen = true;
     }, ButtonOption::Ascii());
+
+    auto cancelBtn = Button("Anuluj", onCancel, ButtonOption::Ascii());
+
+    auto submitBtn = Button("Potwierdź i zapłać", submitBtnAction, ButtonOption::Ascii());
 
     auto mileageRadio = Radiobox(&(order->mileageOptions), &(order->mileageTier), RadioboxOption::Simple());
 
@@ -271,9 +278,7 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
     // Password modal for account creation during order
     auto password = std::make_shared<std::string>();
     auto passwordError = std::make_shared<std::string>("");
-    auto passwordInput = Input(password.get(), "Hasło", getWhiteInputOption(true));
-
-    auto confirmAccountBtn = Button("Utwórz konto i zamów", [&state, &auth, order, password, passwordError, action]{
+    auto confirmAccountBtnAction = [&state, &auth, order, password, passwordError, action]{
         if (password->empty()) {
             *passwordError = "Hasło nie może być puste";
             return;
@@ -287,7 +292,11 @@ Component constructConfigurationForm(ApplicationState& state, AuthManager& auth,
         } else {
             *passwordError = "Użytkownik już istnieje";
         }
-    }, ButtonOption::Ascii());
+    };
+
+    auto passwordInput = Input(password.get(), "Hasło", getWhiteInputOption(true, confirmAccountBtnAction));
+
+    auto confirmAccountBtn = Button("Utwórz konto i zamów", confirmAccountBtnAction, ButtonOption::Ascii());
 
     auto cancelAccountBtn = Button("Anuluj", [&state]{ state.isOrderAccountModalOpen = false; }, ButtonOption::Ascii());
 
