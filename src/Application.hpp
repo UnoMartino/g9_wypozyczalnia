@@ -60,10 +60,31 @@ struct CalendarState {
     int month;
 };
 
+struct FilterState {
+    int sortOption = 0; // 0: Domyślnie, 1: Cena rosnąco, 2: Cena malejąco, 3: Nazwa (A-Z)
+
+    // Checkboxes state
+    bool showCars = true;
+    bool showMotorcycles = true;
+    bool showTrucks = true;
+
+    bool showPremium = true;
+    bool showStandard = true;
+    bool showEconomy = true;
+    bool showBudget = true;
+    bool showBasic = true;
+    bool showUtility = true;
+
+    std::string minPrice = "";
+    std::string maxPrice = "";
+    std::string searchQuery = "";
+};
+
 static std::vector<std::unique_ptr<Vehicle>> loadVehicles();
 static std::vector<Order> loadOrders();
 // stores application state data
 struct ApplicationState {
+    std::function<void()> onSearchRequested;
     std::vector<std::unique_ptr<Vehicle>> loadedVehicles = loadVehicles();       // store vehicle list from 'data.json'
 
     std::unordered_map<int, std::vector<DateRange>> reservations;
@@ -95,6 +116,9 @@ struct ApplicationState {
     std::optional<std::chrono::system_clock::time_point> rangeEnd;
 
     int selectionStep = 0; // 0 = nothing, 1 = started, 2 = finished
+
+    FilterState filterState;
+    std::function<void()> onPostcardsNeedsRebuild = []{};
 
     //
 
@@ -133,6 +157,8 @@ struct ApplicationState {
             }
             selectionStep = 2;
         }
+
+        if (onPostcardsNeedsRebuild) onPostcardsNeedsRebuild();
     }
 
     std::vector<DateRange> getReservations(int id) {

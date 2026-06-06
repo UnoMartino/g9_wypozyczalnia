@@ -37,7 +37,20 @@ void Application::run() {
         m_view.getFooter()
     });
 
-    application_layout = ftxui::CatchEvent(application_layout, [this](ftxui::Event e) {
+    class FallbackEventHandler : public ftxui::ComponentBase {
+    public:
+        FallbackEventHandler(ftxui::Component child, std::function<bool(ftxui::Event)> cb) : cb_(cb) {
+            Add(child);
+        }
+        bool OnEvent(ftxui::Event e) override {
+            if (ftxui::ComponentBase::OnEvent(e)) return true;
+            return cb_(e);
+        }
+    private:
+        std::function<bool(ftxui::Event)> cb_;
+    };
+
+    application_layout = std::make_shared<FallbackEventHandler>(application_layout, [this](ftxui::Event e) {
         return handleEvents(e, m_state.screen);
     });
 
@@ -54,20 +67,10 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         return true;
     }
 
-    // If an input is focused, we should NOT process global shortcuts (like '0', '1')
-    // because the user is likely typing into the field.
-    bool inputFocused = false;
-    if (m_view.m_applicationView) {
-        // FTXUI components have a Focused() method. 
-        // We can check if the active modal or main view has a focused child that is an input.
-        // However, a simpler way in FTXUI is often to check the Event's target or
-        // use the screen's focus state if available.
-        // Given the current architecture, we'll check the top-level view.
-        inputFocused = m_view.m_applicationView->Focused();
-    }
+    bool isModalOpen = m_state.isLoginModalOpen || m_state.isRegisterModalOpen || m_state.isOrderAccountModalOpen || m_state.isAccountSettingsModalOpen;
 
     if (e == ftxui::Event::Character('0')) {
-        if (inputFocused) return false; // Let the input handle it
+        if (isModalOpen) return false;
         m_state.currentFocus = FocusKind::TOPBAR;
         m_view.getTopbar()->TakeFocus();
         return true;
@@ -75,9 +78,17 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
 
 
     if (e == ftxui::Event::Character('1')) {
-        if (inputFocused) return false; // Let the input handle it
+        if (isModalOpen) return false;
         m_state.currentFocus = cktofk(m_state.getCurrentContext().contextId);
         m_view.getContent()->TakeFocus();
+        return true;
+    }
+
+    if (e == ftxui::Event::Character('/')) {
+        if (isModalOpen) return false;
+        if (m_state.onSearchRequested) {
+            m_state.onSearchRequested();
+        }
         return true;
     }
 

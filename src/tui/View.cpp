@@ -85,53 +85,116 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         authLogic
     });
 
-    Components postcards;
     Component configuration = Container::Vertical({});
     Component orderSummary = Container::Vertical({});
+    auto postcard_container = Container::Vertical({});
 
-    for (const auto& vehicle: state.loadedVehicles) {
-        if (vehicle == nullptr) continue;
+    state.onPostcardsNeedsRebuild = [this, &state, postcard_container, configuration, orderSummary]() {
+        postcard_container->DetachAllChildren();
 
-        Vehicle* ptr = vehicle.get();
+        std::vector<Vehicle*> filtered;
+        for (const auto& vehicle: state.loadedVehicles) {
+            if (vehicle == nullptr) continue;
+            Vehicle* ptr = vehicle.get();
 
-        auto p = constructPostcardComponent(vehicle, [this, &state, ptr, configuration, orderSummary](){
-            state.rangeStart = std::nullopt;
-            state.rangeEnd = std::nullopt;
-            state.selectionStep = 0;
+            // apply filters
+            if (!state.filterState.searchQuery.empty()) {
+                std::string q = state.filterState.searchQuery;
+                std::transform(q.begin(), q.end(), q.begin(), ::tolower);
+                std::string n = ptr->getName();
+                std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+                if (n.find(q) == std::string::npos) continue;
+            }
 
-            configuration->DetachAllChildren();
-            configuration->Add(constructConfigurationForm(state, m_auth, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
-                state.orders.push_back(*finalOrder);
-                saveOrders(state.orders);
+            if (!state.filterState.showCars && ptr->getKind() == VehicleKind::Car) continue;
+            if (!state.filterState.showMotorcycles && ptr->getKind() == VehicleKind::Motorcycle) continue;
+            if (!state.filterState.showTrucks && ptr->getKind() == VehicleKind::Truck) continue;
 
-                state.addReservation(ptr->getId(), finalOrder->rentRange);
+            auto t = ptr->getTier();
+            if (!state.filterState.showPremium && t == VehicleTier::Premium) continue;
+            if (!state.filterState.showStandard && t == VehicleTier::Standard) continue;
+            if (!state.filterState.showEconomy && t == VehicleTier::Economy) continue;
+            if (!state.filterState.showBudget && t == VehicleTier::Budget) continue;
+            if (!state.filterState.showBasic && t == VehicleTier::Basic) continue;
+            if (!state.filterState.showUtility && t == VehicleTier::Utility) continue;
 
-                orderSummary->DetachAllChildren();
-                orderSummary->Add(constructOrderSummary(state, finalOrder, [this, &state]{
+            try {
+                if (!state.filterState.minPrice.empty()) {
+                    uint32_t minP = std::stoul(state.filterState.minPrice);
+                    if (ptr->getPrice() < minP) continue;
+                }
+            } catch (...) {}
+
+            try {
+                if (!state.filterState.maxPrice.empty()) {
+                    uint32_t maxP = std::stoul(state.filterState.maxPrice);
+                    if (ptr->getPrice() > maxP) continue;
+                }
+            } catch (...) {}
+
+            if (state.selectionStep == 2 && state.rangeStart && state.rangeEnd) {
+                bool available = true;
+                for (const auto& res : state.getReservations(ptr->getId())) {
+                    if (res.start <= *state.rangeEnd && res.end >= *state.rangeStart) {
+                        available = false;
+                        break;
+                    }
+                }
+                if (!available) continue;
+            }
+
+            filtered.push_back(ptr);
+        }
+
+        if (state.filterState.sortOption == 1) { // Cena rosnąco
+            std::sort(filtered.begin(), filtered.end(), [](Vehicle* a, Vehicle* b){ return a->getPrice() < b->getPrice(); });
+        } else if (state.filterState.sortOption == 2) { // Cena malejąco
+            std::sort(filtered.begin(), filtered.end(), [](Vehicle* a, Vehicle* b){ return a->getPrice() > b->getPrice(); });
+        } else if (state.filterState.sortOption == 3) { // Nazwa
+            std::sort(filtered.begin(), filtered.end(), [](Vehicle* a, Vehicle* b){ return a->getName() < b->getName(); });
+        }
+
+        for (auto* ptr : filtered) {
+            auto p = constructPostcardComponent(ptr, [this, &state, ptr, configuration, orderSummary](){
+                state.rangeStart = std::nullopt;
+                state.rangeEnd = std::nullopt;
+                state.selectionStep = 0;
+
+                configuration->DetachAllChildren();
+                configuration->Add(constructConfigurationForm(state, m_auth, ptr, [this, &state, orderSummary, ptr](std::shared_ptr<Order> finalOrder) {
+                    state.orders.push_back(*finalOrder);
+                    saveOrders(state.orders);
+
+                    state.addReservation(ptr->getId(), finalOrder->rentRange);
+
+                    orderSummary->DetachAllChildren();
+                    orderSummary->Add(constructOrderSummary(state, finalOrder, [this, &state]{
+                        state.navigationStack.clear();
+                        state.navigationStack.push_back({HOME, "Home"});
+                        state.currentFocus = FocusKind::HOME;
+                        this->rebuildBreadcrumbs(state);
+                    }));
+
+                    state.navigationStack.push_back(NavigationNode{ORDER_SUMMARY, "Potwierdzenie"});
+                    state.currentFocus = FocusKind::ORDER_SUMMARY;
+                    this->rebuildBreadcrumbs(state);
+                }, [this, &state] {
                     state.navigationStack.clear();
                     state.navigationStack.push_back({HOME, "Home"});
                     state.currentFocus = FocusKind::HOME;
                     this->rebuildBreadcrumbs(state);
                 }));
+                configuration->TakeFocus();
 
-                state.navigationStack.push_back(NavigationNode{ORDER_SUMMARY, "Potwierdzenie"});
-                state.currentFocus = FocusKind::ORDER_SUMMARY;
-                this->rebuildBreadcrumbs(state);
-            }, [this, &state] {
-                state.navigationStack.clear();
-                state.navigationStack.push_back({HOME, "Home"});
-                state.currentFocus = FocusKind::HOME;
-                this->rebuildBreadcrumbs(state);
-            }));
-            configuration->TakeFocus();
+                state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
+                state.currentFocus = FocusKind::VEHICLE_FORM;
+                rebuildBreadcrumbs(state);
+            });
+            postcard_container->Add(std::move(p));
+        }
+    };
 
-            state.navigationStack.push_back(NavigationNode{VEHICLE_DETAILS, ptr->getName()});
-            state.currentFocus = FocusKind::VEHICLE_FORM;
-            rebuildBreadcrumbs(state);
-        });
-        postcards.push_back(std::move(p));
-    }
-    auto postcard_container = Container::Vertical(std::move(postcards));
+    state.onPostcardsNeedsRebuild();
 
     auto rightPanel = constructRightPanel(state);
 
@@ -165,9 +228,7 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
                 bool anyModalOpen = state.isLoginModalOpen || state.isRegisterModalOpen || state.isAccountSettingsModalOpen || state.isOrderAccountModalOpen;
-                if (state.currentFocus == FocusKind::HOME && !anyModalOpen) {
-                    postcard_container->TakeFocus();
-                }
+                // Focus should not be trapped here, otherwise RightPanel cannot be navigated to.
                 return hbox({
                     postcard_container->Render() | vscroll_indicator | yframe,
                     rightPanel->Render(),
@@ -227,7 +288,7 @@ void View::constructFooter(ApplicationState& state) {
 
         switch (state.currentFocus) {
             case FocusKind::HOME:
-                shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj "));
+                shortcuts.push_back(text("| [Enter] Wybierz | [↑/↓] Nawiguj | [/] Wyszukaj "));
                 break;
             case FocusKind::VEHICLE_DETAILS:
                 shortcuts.push_back(text("| [Backspace] Powrót "));

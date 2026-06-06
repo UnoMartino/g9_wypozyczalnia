@@ -14,4 +14,4 @@ using namespace ftxui;
 // =====
 
 // view component representing vehicle postcard
-Component constructPostcardComponent(const std::unique_ptr<Vehicle>& vehicle, std::function<void()> action);
+Component constructPostcardComponent(Vehicle* vehicle, std::function<void()> action);
