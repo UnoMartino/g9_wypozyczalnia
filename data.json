@@ -1,13 +1,12 @@
 [
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 101,
         "isElectric": false,
         "kind": 0,
         "licensePlate": "WA 12345",
         "mileage": 125000,
-        "modelName": "Toyota Corolla",
+        "modelName": "Toyotaa",
         "needsService": false,
         "passengerCapacity": 5,
         "price": 135,
@@ -15,7 +14,6 @@
         "trunkCapacityLiters": 470
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": false,
         "id": 102,
@@ -30,7 +28,6 @@
         "tier": 2
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 103,
         "kind": 2,
@@ -46,7 +43,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 104,
         "isElectric": false,
         "kind": 0,
@@ -60,7 +56,6 @@
         "trunkCapacityLiters": 400
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": true,
         "hasSidecar": false,
         "id": 105,
@@ -75,7 +70,6 @@
         "tier": 4
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 106,
         "kind": 2,
@@ -91,7 +85,6 @@
     },
     {
         "bodyStyle": 2,
-        "dueDate": 0,
         "id": 107,
         "isElectric": false,
         "kind": 0,
@@ -106,7 +99,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 108,
         "isElectric": true,
         "kind": 0,
@@ -120,7 +112,6 @@
         "trunkCapacityLiters": 425
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": true,
         "hasSidecar": false,
         "id": 109,
@@ -135,7 +126,6 @@
         "tier": 1
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 110,
         "kind": 2,
@@ -151,7 +141,6 @@
     },
     {
         "bodyStyle": null,
-        "dueDate": 0,
         "id": 111,
         "isElectric": false,
         "kind": 0,
@@ -166,7 +155,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 112,
         "isElectric": false,
         "kind": 0,
@@ -180,7 +168,6 @@
         "trunkCapacityLiters": 330
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 113,
         "kind": 2,
@@ -195,7 +182,6 @@
         "trailerType": null
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": false,
         "id": 114,
@@ -211,7 +197,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 115,
         "isElectric": false,
         "kind": 0,
@@ -225,7 +210,6 @@
         "trunkCapacityLiters": 503
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": true,
         "hasSidecar": false,
         "id": 116,
@@ -240,7 +224,6 @@
         "tier": 1
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 117,
         "kind": 2,
@@ -256,7 +239,6 @@
     },
     {
         "bodyStyle": null,
-        "dueDate": 0,
         "id": 118,
         "isElectric": false,
         "kind": 0,
@@ -270,7 +252,6 @@
         "trunkCapacityLiters": 3300
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": false,
         "id": 119,
@@ -286,7 +267,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 120,
         "isElectric": true,
         "kind": 0,
@@ -301,7 +281,6 @@
     },
     {
         "bodyStyle": 2,
-        "dueDate": 0,
         "id": 121,
         "isElectric": false,
         "kind": 0,
@@ -316,7 +295,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 122,
         "isElectric": false,
         "kind": 0,
@@ -330,7 +308,6 @@
         "trunkCapacityLiters": 286
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": false,
         "id": 123,
         "kind": 2,
@@ -345,7 +322,6 @@
         "trailerType": 1
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": false,
         "id": 124,
@@ -361,7 +337,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 125,
         "isElectric": true,
         "kind": 0,
@@ -375,7 +350,6 @@
         "trunkCapacityLiters": 435
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 126,
         "kind": 2,
@@ -390,7 +364,6 @@
         "trailerType": 0
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": true,
         "hasSidecar": true,
         "id": 127,
@@ -406,7 +379,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 128,
         "isElectric": false,
         "kind": 0,
@@ -421,7 +393,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 129,
         "isElectric": false,
         "kind": 0,
@@ -435,7 +406,6 @@
         "trunkCapacityLiters": 445
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 130,
         "kind": 2,
@@ -451,7 +421,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 131,
         "isElectric": true,
         "kind": 0,
@@ -465,7 +434,6 @@
         "trunkCapacityLiters": 338
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": true,
         "hasSidecar": false,
         "id": 132,
@@ -480,7 +448,6 @@
         "tier": 5
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": false,
         "id": 133,
         "kind": 2,
@@ -496,7 +463,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 134,
         "isElectric": false,
         "kind": 0,
@@ -510,7 +476,6 @@
         "trunkCapacityLiters": 510
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": true,
         "id": 135,
@@ -525,7 +490,6 @@
         "tier": 4
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 136,
         "kind": 2,
@@ -541,7 +505,6 @@
     },
     {
         "bodyStyle": 2,
-        "dueDate": 0,
         "id": 137,
         "isElectric": false,
         "kind": 0,
@@ -556,7 +519,6 @@
     },
     {
         "bodyStyle": null,
-        "dueDate": 0,
         "id": 138,
         "isElectric": false,
         "kind": 0,
@@ -570,7 +532,6 @@
         "trunkCapacityLiters": 15000
     },
     {
-        "dueDate": 0,
         "hasLuggagePanniers": false,
         "hasSidecar": false,
         "id": 139,
@@ -585,7 +546,6 @@
         "tier": 3
     },
     {
-        "dueDate": 0,
         "hasSleeperCab": true,
         "id": 140,
         "kind": 2,
@@ -601,7 +561,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 141,
         "isElectric": false,
         "kind": 0,
@@ -616,7 +575,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 142,
         "isElectric": false,
         "kind": 0,
@@ -631,7 +589,6 @@
     },
     {
         "bodyStyle": 2,
-        "dueDate": 0,
         "id": 143,
         "isElectric": false,
         "kind": 0,
@@ -646,7 +603,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 144,
         "isElectric": false,
         "kind": 0,
@@ -661,7 +617,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 145,
         "isElectric": false,
         "kind": 0,
@@ -676,7 +631,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 146,
         "isElectric": true,
         "kind": 0,
@@ -691,7 +645,6 @@
     },
     {
         "bodyStyle": 0,
-        "dueDate": 0,
         "id": 147,
         "isElectric": false,
         "kind": 0,
@@ -706,7 +659,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 148,
         "isElectric": false,
         "kind": 0,
@@ -721,7 +673,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 149,
         "isElectric": true,
         "kind": 0,
@@ -736,7 +687,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 150,
         "isElectric": false,
         "kind": 0,
@@ -751,7 +701,6 @@
     },
     {
         "bodyStyle": 2,
-        "dueDate": 0,
         "id": 151,
         "isElectric": false,
         "kind": 0,
@@ -766,7 +715,6 @@
     },
     {
         "bodyStyle": 1,
-        "dueDate": 0,
         "id": 152,
         "isElectric": true,
         "kind": 0,
@@ -781,7 +729,6 @@
     },
     {
         "bodyStyle": null,
-        "dueDate": 0,
         "id": 153,
         "isElectric": false,
         "kind": 0,
@@ -796,7 +743,6 @@
     },
     {
         "bodyStyle": 3,
-        "dueDate": 0,
         "id": 154,
         "isElectric": false,
         "kind": 0,
@@ -811,7 +757,6 @@
     },
     {
         "bodyStyle": null,
-        "dueDate": 0,
         "id": 155,
         "isElectric": false,
         "kind": 0,

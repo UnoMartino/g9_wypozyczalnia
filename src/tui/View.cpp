@@ -74,6 +74,12 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         m_auth.logout();
         state.isSignedIn = false;
         state.signedInUser = "guest";
+
+        state.navigationStack.clear();
+        state.navigationStack.push_back({HOME, "Home"});
+        state.currentFocus = FocusKind::HOME;
+        this->rebuildBreadcrumbs(state);
+
     }, ButtonOption::Ascii());
 
     auto btnAdminPanel = Button("Panel Administratora", [this, &state] {
