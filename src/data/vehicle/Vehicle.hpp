@@ -59,6 +59,7 @@ public:
     uint32_t getPrice() { return m_commonData.price; }
     std::string getName() { return m_commonData.modelName; }
     int getId() const { return m_commonData.id; }
+    std::optional<std::string> getLicensePlate() const { return m_commonData.licensePlate; }
 
     virtual json toJSON() const = 0;
 

@@ -48,19 +48,27 @@ namespace {
         }
 
         void syncFromJSON(const nlohmann::json& j) {
-            *modelName = j.value("modelName", "");
-            *licensePlate = j.value("licensePlate", "");
+            *modelName = (j.contains("modelName") && j["modelName"].is_string()) ? j["modelName"].get<std::string>() : "";
+            *licensePlate = (j.contains("licensePlate") && j["licensePlate"].is_string()) ? j["licensePlate"].get<std::string>() : "";
             *price = std::to_string(j.value("price", 0));
             *mileage = std::to_string(j.value("mileage", 0));
             *capacity = std::to_string(j.value("passengerCapacity", 0));
-            *tierIndex = j.value("tier", 1) - 1;
-            *kindIndex = j.value("kind", 0);
+
+            int tierVal = j.value("tier", 1) - 1;
+            if (tierVal < 0 || tierVal >= (int)tierOptions->size()) tierVal = 0;
+            *tierIndex = tierVal;
+
+            int kindVal = j.value("kind", 0);
+            if (kindVal < 0 || kindVal >= (int)kindOptions->size()) kindVal = 0;
+            *kindIndex = kindVal;
 
             if (*kindIndex == 0) { // Car
                 *carTrunk = std::to_string(j.value("trunkCapacityLiters", 0));
                 *carIsElectric = j.value("isElectric", false);
                 if (j.contains("bodyStyle") && !j["bodyStyle"].is_null()) {
-                    *carBodyStyleIndex = j["bodyStyle"].get<int>();
+                    int bs = j["bodyStyle"].get<int>();
+                    if (bs < 0 || bs >= (int)carBodyStyleOptions->size()) bs = 4;
+                    *carBodyStyleIndex = bs;
                 } else {
                     *carBodyStyleIndex = 4;
                 }
@@ -72,7 +80,9 @@ namespace {
                 *truckMaxPayload = std::to_string(j.value("maxPayloadKg", 0));
                 *truckHasSleeperCab = j.value("hasSleeperCab", false);
                 if (j.contains("trailerType") && !j["trailerType"].is_null()) {
-                    *truckTrailerIndex = j["trailerType"].get<int>();
+                    int tt = j["trailerType"].get<int>();
+                    if (tt < 0 || tt >= (int)truckTrailerOptions->size()) tt = 3;
+                    *truckTrailerIndex = tt;
                 } else {
                     *truckTrailerIndex = 3;
                 }
@@ -81,19 +91,44 @@ namespace {
     };
 
     Component buildForm(ApplicationState& state, std::shared_ptr<FormState> fs, bool isEditMode, std::shared_ptr<int> selectedVehicleIndex = nullptr) {
+        auto numericFilter = [](std::shared_ptr<std::string> str) {
+            std::string filtered;
+            for (char c : *str) {
+                if (std::isdigit(static_cast<unsigned char>(c))) {
+                    filtered += c;
+                }
+            }
+            *str = filtered;
+        };
+
         InputOption opt;
         opt.multiline = false;
 
+        InputOption numOpt = opt;
+
         auto inputModel = Input(fs->modelName.get(), "Nazwa modelu", opt);
+
+        auto optPrice = numOpt;
+        optPrice.on_change = [fs, numericFilter] { numericFilter(fs->price); };
+        auto inputPrice = Input(fs->price.get(), "Cena (PLN/dzień)", optPrice);
+
+        auto optMileage = numOpt;
+        optMileage.on_change = [fs, numericFilter] { numericFilter(fs->mileage); };
+        auto inputMileage = Input(fs->mileage.get(), "Przebieg", optMileage);
+
+        auto optCapacity = numOpt;
+        optCapacity.on_change = [fs, numericFilter] { numericFilter(fs->capacity); };
+        auto inputCapacity = Input(fs->capacity.get(), "Pojemność/Liczba miejsc", optCapacity);
+
         auto inputLicensePlate = Input(fs->licensePlate.get(), "Numer rejestracyjny", opt);
-        auto inputPrice = Input(fs->price.get(), "Cena (PLN/dzień)", opt);
-        auto inputMileage = Input(fs->mileage.get(), "Przebieg", opt);
-        auto inputCapacity = Input(fs->capacity.get(), "Pojemność/Liczba miejsc", opt);
 
         auto kindRadio = Radiobox(fs->kindOptions.get(), fs->kindIndex.get());
         auto tierRadio = Radiobox(fs->tierOptions.get(), fs->tierIndex.get());
 
-        auto inputCarTrunk = Input(fs->carTrunk.get(), "Pojemność bagażnika (L)", opt);
+        auto optTrunk = numOpt;
+        optTrunk.on_change = [fs, numericFilter] { numericFilter(fs->carTrunk); };
+        auto inputCarTrunk = Input(fs->carTrunk.get(), "Pojemność bagażnika (L)", optTrunk);
+
         auto radioCarBody = Radiobox(fs->carBodyStyleOptions.get(), fs->carBodyStyleIndex.get());
         auto checkCarElectric = Checkbox("Pojazd elektryczny", fs->carIsElectric.get());
 
@@ -101,7 +136,10 @@ namespace {
         auto checkMotoLicense = Checkbox("Wymaga kat. A", fs->motoRequiresFullLicense.get());
         auto checkMotoLuggage = Checkbox("Kufry", fs->motoHasLuggage.get());
 
-        auto inputTruckPayload = Input(fs->truckMaxPayload.get(), "Max ładowoność (kg)", opt);
+        auto optPayload = numOpt;
+        optPayload.on_change = [fs, numericFilter] { numericFilter(fs->truckMaxPayload); };
+        auto inputTruckPayload = Input(fs->truckMaxPayload.get(), "Max ładowoność (kg)", optPayload);
+
         auto radioTruckTrailer = Radiobox(fs->truckTrailerOptions.get(), fs->truckTrailerIndex.get());
         auto checkTruckSleeper = Checkbox("Kabina sypialna", fs->truckHasSleeperCab.get());
 
@@ -114,6 +152,21 @@ namespace {
             if (isEditMode && (state.loadedVehicles.empty() || !selectedVehicleIndex || *selectedVehicleIndex >= static_cast<int>(state.loadedVehicles.size()) || !state.loadedVehicles[*selectedVehicleIndex])) {
                 *fs->resultMsg = "Błąd: Nie wybrano pojazdu.";
                 return;
+            }
+
+            // Duplicate license plate check
+            if (!fs->licensePlate->empty()) {
+                for (const auto& v : state.loadedVehicles) {
+                    if (v) {
+                        auto lp = v->getLicensePlate();
+                        if (lp && *lp == *fs->licensePlate) {
+                            if (!isEditMode || (selectedVehicleIndex && v->getId() != state.loadedVehicles[*selectedVehicleIndex]->getId())) {
+                                *fs->resultMsg = "Błąd: Pojazd z tą rejestracją już istnieje!";
+                                return;
+                            }
+                        }
+                    }
+                }
             }
 
             VehicleData vd;
@@ -147,7 +200,7 @@ namespace {
                 vd.mileage = fs->mileage->empty() ? 0 : std::stoi(*fs->mileage);
                 vd.passengerCapacity = fs->capacity->empty() ? 0 : std::stoi(*fs->capacity);
             } catch(...) {
-                *fs->resultMsg = "Błąd: Nieprawidłowy format liczby.";
+                *fs->resultMsg = "Błąd: Nieprawidłowy format liczby (Cena/Przebieg/Miejsca).";
                 return;
             }
             vd.tier = static_cast<VehicleTier>(*fs->tierIndex + 1);
@@ -158,7 +211,12 @@ namespace {
                 vd.kind = VehicleKind::Car;
                 CarData cd;
                 cd.base = vd;
-                try { cd.trunkCapacityLiters = fs->carTrunk->empty() ? 0 : std::stoi(*fs->carTrunk); } catch(...) {}
+                try {
+                    cd.trunkCapacityLiters = fs->carTrunk->empty() ? 0 : std::stoi(*fs->carTrunk);
+                } catch(...) {
+                    *fs->resultMsg = "Błąd: Nieprawidłowa pojemność bagażnika.";
+                    return;
+                }
                 BodyStyle bs[] = { Sedan, SUV, StateWagon, Hatchback, None };
                 cd.bodyStyle = bs[*fs->carBodyStyleIndex];
                 cd.isElectric = *fs->carIsElectric;
@@ -175,7 +233,12 @@ namespace {
                 vd.kind = VehicleKind::Truck;
                 TruckData td;
                 td.base = vd;
-                try { td.maxPayloadKg = fs->truckMaxPayload->empty() ? 0 : std::stoi(*fs->truckMaxPayload); } catch(...) {}
+                try {
+                    td.maxPayloadKg = fs->truckMaxPayload->empty() ? 0 : std::stoi(*fs->truckMaxPayload);
+                } catch(...) {
+                    *fs->resultMsg = "Błąd: Nieprawidłowa ładowność.";
+                    return;
+                }
                 TrailerType tt[] = { Refrigerated, Tank, Dry, Unknown };
                 td.trailerType = tt[*fs->truckTrailerIndex];
                 td.hasSleeperCab = *fs->truckHasSleeperCab;
@@ -259,6 +322,11 @@ namespace {
         });
 
         return Renderer(formContainerWithMouseScroll, [formContainer, fs, isEditMode] {
+            auto kindText = (isEditMode && *fs->kindIndex >= 0 && *fs->kindIndex < (int)fs->kindOptions->size())
+                ? fs->kindOptions->at(*fs->kindIndex) : "Nieznany";
+            auto tierText = (isEditMode && *fs->tierIndex >= 0 && *fs->tierIndex < (int)fs->tierOptions->size())
+                ? fs->tierOptions->at(*fs->tierIndex) : "Nieznany";
+
             auto leftCol = vbox({
                 hbox({ text("Nazwa modelu: ") | size(WIDTH, EQUAL, 20), formContainer->ChildAt(0)->Render() }),
                 hbox({ text("Rejestracja: ") | size(WIDTH, EQUAL, 20), formContainer->ChildAt(1)->Render() }),
@@ -266,8 +334,8 @@ namespace {
                 hbox({ text("Przebieg: ") | size(WIDTH, EQUAL, 20), formContainer->ChildAt(3)->Render() }),
                 hbox({ text("Liczba miejsc: ") | size(WIDTH, EQUAL, 20), formContainer->ChildAt(4)->Render() }),
                 separatorEmpty(),
-                hbox({ text("Typ pojazdu: ") | size(WIDTH, EQUAL, 20), isEditMode ? text(fs->kindOptions->at(*fs->kindIndex)) | color(Color::GrayDark) : formContainer->ChildAt(5)->Render() }),
-                hbox({ text("Klasa pojazdu: ") | size(WIDTH, EQUAL, 20), isEditMode ? text(fs->tierOptions->at(*fs->tierIndex)) | color(Color::GrayDark) : formContainer->ChildAt(6)->Render() }),
+                hbox({ text("Typ pojazdu: ") | size(WIDTH, EQUAL, 20), isEditMode ? text(kindText) | color(Color::GrayDark) : formContainer->ChildAt(5)->Render() }),
+                hbox({ text("Klasa pojazdu: ") | size(WIDTH, EQUAL, 20), isEditMode ? text(tierText) | color(Color::GrayDark) : formContainer->ChildAt(6)->Render() }),
 
             });
 
@@ -312,15 +380,29 @@ Component constructAdminDashboard(ApplicationState& state) {
     auto filteredIndices = std::make_shared<std::vector<int>>();
     auto searchQuery = std::make_shared<std::string>();
 
-    auto lastSyncedIndex = std::make_shared<int>(-1);
+    auto syncFormWithSelection = [&state, filteredIndices, selectedMenuIndex, selectedVehicleIndex, editFs]() {
+        if (!filteredIndices->empty() && *selectedMenuIndex >= 0 && *selectedMenuIndex < static_cast<int>(filteredIndices->size())) {
+            int actualIndex = (*filteredIndices)[*selectedMenuIndex];
+            *selectedVehicleIndex = actualIndex;
+            if (actualIndex >= 0 && actualIndex < static_cast<int>(state.loadedVehicles.size())) {
+                if (state.loadedVehicles[actualIndex]) {
+                    editFs->syncFromJSON(state.loadedVehicles[actualIndex]->toJSON());
+                    *editFs->resultMsg = "";
+                }
+            }
+        } else {
+            editFs->clear();
+            *editFs->resultMsg = "Brak wyników.";
+        }
+    };
 
     auto editForm = buildForm(state, editFs, true, selectedVehicleIndex);
 
-    auto updateEditList = [&state, editVehicleLabels, filteredIndices, searchQuery, selectedMenuIndex]() {
+    auto updateEditList = [&state, editVehicleLabels, filteredIndices, searchQuery, selectedMenuIndex, syncFormWithSelection]() {
         try {
             std::vector<std::string> newLabels;
             std::vector<int> newIndices;
-            
+
             std::string q = *searchQuery;
             std::transform(q.begin(), q.end(), q.begin(), ::tolower);
 
@@ -328,7 +410,7 @@ Component constructAdminDashboard(ApplicationState& state) {
                 const auto& v = state.loadedVehicles[i];
                 std::string rawName = v ? v->getName() : "Usunięty pojazd";
                 if (rawName.length() > 50) rawName = rawName.substr(0, 50);
-                
+
                 std::string name = rawName + " (ID: " + std::to_string(v ? v->getId() : -1) + ")";
 
                 std::string nameLower = name;
@@ -351,6 +433,8 @@ Component constructAdminDashboard(ApplicationState& state) {
             if (!editVehicleLabels->empty() && *selectedMenuIndex >= static_cast<int>(editVehicleLabels->size())) {
                 *selectedMenuIndex = static_cast<int>(editVehicleLabels->size() - 1);
             }
+
+            syncFormWithSelection();
         } catch (...) {
             *editVehicleLabels = {"Błąd listy"};
             filteredIndices->clear();
@@ -360,18 +444,7 @@ Component constructAdminDashboard(ApplicationState& state) {
     updateEditList();
 
     MenuOption editMenuOption;
-    editMenuOption.on_change = [&state, selectedMenuIndex, selectedVehicleIndex, filteredIndices, editFs]() {
-        if (!filteredIndices->empty() && *selectedMenuIndex >= 0 && *selectedMenuIndex < static_cast<int>(filteredIndices->size())) {
-            int actualIndex = (*filteredIndices)[*selectedMenuIndex];
-            *selectedVehicleIndex = actualIndex;
-            if (actualIndex >= 0 && actualIndex < static_cast<int>(state.loadedVehicles.size())) {
-                if (state.loadedVehicles[actualIndex]) {
-                    editFs->syncFromJSON(state.loadedVehicles[actualIndex]->toJSON());
-                    *editFs->resultMsg = ""; // clear message on selection change
-                }
-            }
-        }
-    };
+    editMenuOption.on_change = syncFormWithSelection;
     auto editMenu = Menu(editVehicleLabels.get(), selectedMenuIndex.get(), editMenuOption);
 
     InputOption searchOpt;
@@ -379,7 +452,7 @@ Component constructAdminDashboard(ApplicationState& state) {
     auto searchInput = Input(searchQuery.get(), "Szukaj...", searchOpt);
 
     auto editMenuScrolled = Renderer(editMenu, [editMenu] {
-        return editMenu->Render() | vscroll_indicator | frame | flex;
+        return editMenu->Render() | vscroll_indicator | yframe | flex;
     });
 
     auto leftPanel = Container::Vertical({
@@ -412,21 +485,11 @@ Component constructAdminDashboard(ApplicationState& state) {
     auto lastSearchQuery = std::make_shared<std::string>();
     auto lastVehicleCount = std::make_shared<int>(state.loadedVehicles.size());
 
-    auto editLogic = Renderer(editContainer, [&state, editContainer, updateEditList, selectedVehicleIndex, selectedMenuIndex, editFs, lastSyncedIndex, searchQuery, lastSearchQuery, lastVehicleCount, filteredIndices, editForm, leftPanelWithCatch] {
+    auto editLogic = Renderer(editContainer, [&state, editContainer, updateEditList, searchQuery, lastSearchQuery, lastVehicleCount, filteredIndices, editForm, leftPanelWithCatch] {
         if (static_cast<int>(state.loadedVehicles.size()) != *lastVehicleCount || *searchQuery != *lastSearchQuery) {
             *lastVehicleCount = state.loadedVehicles.size();
             *lastSearchQuery = *searchQuery;
             updateEditList();
-        }
-
-        // Initial sync to first available result
-        if (*lastSyncedIndex == -1 && !filteredIndices->empty()) {
-            int firstValidIndex = (*filteredIndices)[0];
-            if (firstValidIndex >= 0 && firstValidIndex < static_cast<int>(state.loadedVehicles.size()) && state.loadedVehicles[firstValidIndex]) {
-                *selectedVehicleIndex = firstValidIndex;
-                *lastSyncedIndex = firstValidIndex;
-                editFs->syncFromJSON(state.loadedVehicles[firstValidIndex]->toJSON());
-            }
         }
 
         auto leftCol = leftPanelWithCatch->Render();
@@ -457,6 +520,6 @@ Component constructAdminDashboard(ApplicationState& state) {
             tab_toggle->Render() | hcenter,
             separator(),
             mainContainer->Render() | flex
-        }) | border | flex;
+        }) | size(WIDTH, GREATER_THAN, 130) | border | flex;
     });
 }
