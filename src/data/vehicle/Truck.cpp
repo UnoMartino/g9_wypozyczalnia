@@ -19,7 +19,6 @@ std::unique_ptr<Truck> Truck::fromJSON(const json& j) {
 
     data.base.mileage = j.at("mileage").get<uint32_t>();
     data.base.needsService = j.at("needsService").get<bool>();
-    data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
     data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
 
@@ -38,6 +37,20 @@ void Truck::printInfo() const {
     std::cout << "Rejestracja: " << m_commonData.licensePlate.value_or("BRAK") << "\n";
 
     std::cout << "Przebieg: " << m_commonData.mileage << " km\n"
-              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n"
-              << "Maksymalna waga: " << m_maxPayloadKg << " kg\n";
+              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n";
+              //<< "Ladownosc: " << m_maxPayloadKg << " kg\n";
+
 } // Truck::printInfo
+
+json Truck::toJSON() const {
+    json j = getCommonJSON();
+    j["maxPayloadKg"] = m_maxPayloadKg;
+    
+    TrailerType tt = Dry;
+    if (m_trailerType == "Chłodnia") tt = Refrigerated;
+    else if (m_trailerType == "Cysterna") tt = Tank;
+    
+    j["trailerType"] = tt;
+    j["hasSleeperCab"] = m_hasSleeperCab;
+    return j;
+}

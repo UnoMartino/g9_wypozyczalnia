@@ -18,7 +18,6 @@ std::unique_ptr<Motorcycle> Motorcycle::fromJSON(const json& j) {
 
     data.base.mileage = j.at("mileage").get<uint32_t>();
     data.base.needsService = j.at("needsService").get<bool>();
-    data.base.dueDate = j.at("dueDate").get<int64_t>();
     data.base.price = j.at("price").get<uint32_t>();
     data.base.passengerCapacity = j.at("passengerCapacity").get<int>();
 
@@ -31,12 +30,20 @@ std::unique_ptr<Motorcycle> Motorcycle::fromJSON(const json& j) {
 
 
 void Motorcycle::printInfo() const {
-    std::cout << "[MOTORCYCLE] ID: " << m_commonData.id
+    std::cout << "[MOTO] ID: " << m_commonData.id
               << " | Model: " << m_commonData.modelName << "\n";
 
     std::cout << "Rejestracja: " << m_commonData.licensePlate.value_or("BRAK") << "\n";
 
     std::cout << "Przebieg: " << m_commonData.mileage << " km\n"
-              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n"
-              << "Miejsce: " << (m_hasSidecar ? "TAK" : "NIE") << "\n";
+              << "Wymaga serwisu: " << (m_commonData.needsService ? "TAK" : "NIE") << "\n";
+
 } // Motorcycle::printInfo
+
+json Motorcycle::toJSON() const {
+    json j = getCommonJSON();
+    j["hasSidecar"] = m_hasSidecar;
+    j["requiresFullLicense"] = m_requiresFullLicense;
+    j["hasLuggagePanniers"] = m_hasLuggagePanniers;
+    return j;
+}

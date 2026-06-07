@@ -10,6 +10,7 @@ enum TrailerType {
     Refrigerated,
     Tank,
     Dry,
+    Unknown,
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(TrailerType, {
@@ -59,5 +60,7 @@ public:
             {"Kabina sypialniana", m_hasSleeperCab ? "Posiada" : "Nie posiada"},
         };
     };
+
+    json toJSON() const override;
 
 }; // Truck

@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <fstream>
 
 // ====
 
@@ -67,6 +68,11 @@ bool Application::handleEvents(ftxui::Event e, ftxui::ScreenInteractive& screen)
         return true;
     }
 
+    // if an input is focused, the application should not process global shortcuts
+    bool inputFocused = false;
+    if (m_view.m_applicationView) {
+        inputFocused = m_view.m_applicationView->Focused();
+    }
     bool isModalOpen = m_state.isLoginModalOpen || m_state.isRegisterModalOpen || m_state.isOrderAccountModalOpen || m_state.isAccountSettingsModalOpen;
 
     if (e == ftxui::Event::Character('0')) {

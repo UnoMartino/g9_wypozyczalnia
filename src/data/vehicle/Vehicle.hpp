@@ -37,7 +37,6 @@ struct VehicleData {
     uint32_t mileage = 0;
     bool needsService = false;
 
-    int64_t dueDate;                        // final rent day
     uint32_t price = 0;
 
     int passengerCapacity = 0;
@@ -60,6 +59,32 @@ public:
     uint32_t getPrice() { return m_commonData.price; }
     std::string getName() { return m_commonData.modelName; }
     int getId() const { return m_commonData.id; }
+    std::optional<std::string> getLicensePlate() const { return m_commonData.licensePlate; }
+
+    virtual json toJSON() const = 0;
+
+protected:
+    json getCommonJSON() const {
+        json j = {
+            {"id", m_commonData.id},
+            {"tier", static_cast<int>(m_commonData.tier)},
+            {"kind", static_cast<int>(m_commonData.kind)},
+            {"modelName", m_commonData.modelName},
+            {"mileage", m_commonData.mileage},
+            {"needsService", m_commonData.needsService},
+            {"price", m_commonData.price},
+            {"passengerCapacity", m_commonData.passengerCapacity}
+        };
+        if (m_commonData.licensePlate) {
+            j["licensePlate"] = *m_commonData.licensePlate;
+        } else {
+            j["licensePlate"] = nullptr;
+        }
+        return j;
+    }
+
 private:
 
 }; // Vehicle
+
+void saveVehicles(const std::vector<std::unique_ptr<Vehicle>>& vehicles);

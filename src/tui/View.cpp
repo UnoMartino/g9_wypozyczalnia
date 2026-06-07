@@ -3,6 +3,7 @@
 #include "Postcard.hpp"
 #include "RightPanel.hpp"
 #include "OrderSummary.hpp"
+#include "AdminDashboard.hpp"
 
 #include "../Application.hpp"
 #include "../util/Auth.hpp"
@@ -19,9 +20,13 @@
 
 // =====
 
-static InputOption getWhiteInputOption(bool isPassword = false) {
+static InputOption getWhiteInputOption(bool isPassword = false, std::function<void()> on_enter = nullptr) {
     InputOption opt;
     opt.password = isPassword;
+    opt.multiline = false;
+    if (on_enter) {
+        opt.on_enter = on_enter;
+    }
     opt.transform = [](InputState state) {
         if (state.is_placeholder) {
             state.element |= dim;
@@ -71,9 +76,16 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         state.signedInUser = "guest";
     }, ButtonOption::Ascii());
 
+    auto btnAdminPanel = Button("Panel Administratora", [this, &state] {
+        state.navigationStack.push_back({ADMIN_DASHBOARD, "Panel Administratora"});
+        state.currentFocus = FocusKind::ADMIN_DASHBOARD;
+        this->rebuildBreadcrumbs(state);
+    }, ButtonOption::Ascii());
+
     auto authComponents = Container::Horizontal({
         Maybe(Container::Horizontal({btnLogin, btnRegister}), [&state]{ return !state.isSignedIn; }),
-        Maybe(Container::Horizontal({btnLogout}), [&state]{ return state.isSignedIn; }),
+        Maybe(btnAdminPanel, [&state, this]{ return state.isSignedIn && m_auth.getCurrentUser() && m_auth.getCurrentUser()->isAdmin(); }),
+        Maybe(btnLogout, [&state]{ return state.isSignedIn; }),
     });
 
     auto authLogic = Renderer(authComponents, [authComponents] {
@@ -203,6 +215,8 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         rightPanel
     });
 
+    auto adminDashboard = constructAdminDashboard(state);
+
     // This tells the engine to safely mount/unmount them from the event loop.
 
     auto safeHome = Maybe(homeView, [&state] {
@@ -217,14 +231,19 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
         return state.getCurrentContext().contextId == ORDER_SUMMARY;
     });
 
+    auto safeAdmin = Maybe(adminDashboard, [&state] {
+        return state.getCurrentContext().contextId == ADMIN_DASHBOARD;
+    });
+
     // Both safe wrappers must be inside the base tree!
     auto contentComponents = Container::Horizontal({
         safeHome,
         safeConfig,
-        safeSummary
+        safeSummary,
+        safeAdmin
     });
 
-    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary] () -> Element {
+    auto contentLogic = Renderer(contentComponents, [&state, postcard_container, rightPanel, configuration, orderSummary, adminDashboard] () -> Element {
         switch (state.getCurrentContext().contextId) {
             case HOME: {
                 bool anyModalOpen = state.isLoginModalOpen || state.isRegisterModalOpen || state.isAccountSettingsModalOpen || state.isOrderAccountModalOpen;
@@ -240,6 +259,9 @@ View::View(ApplicationState& state, AuthManager& auth) : m_auth(auth) {
 
             case ORDER_SUMMARY:
                 return orderSummary->Render() | flex;
+
+            case ADMIN_DASHBOARD:
+                return adminDashboard->Render() | flex;
 
             case VEHICLE_FORM:
                 return text("TODO");
@@ -355,10 +377,7 @@ Component View::constructLoginModal(ApplicationState& state) {
     auto password = std::make_shared<std::string>();
     auto error = std::make_shared<std::string>("");
 
-    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption());
-    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true));
-
-    auto btnOk = Button("Zaloguj", [this, &state, email, password, error] {
+    auto btnOkAction = [this, &state, email, password, error] {
         if (m_auth.signIn(*email, *password)) {
             state.isSignedIn = true;
             state.signedInUser = m_auth.getCurrentUser()->getFirstName();
@@ -368,7 +387,12 @@ Component View::constructLoginModal(ApplicationState& state) {
         } else {
             *error = "Błędny e-mail lub hasło";
         }
-    }, ButtonOption::Ascii());
+    };
+
+    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption(false, btnOkAction));
+    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true, btnOkAction));
+
+    auto btnOk = Button("Zaloguj", btnOkAction, ButtonOption::Ascii());
 
     auto btnCancel = Button("Anuluj", [&state] { state.isLoginModalOpen = false; }, ButtonOption::Ascii());
 
@@ -401,14 +425,7 @@ Component View::constructRegisterModal(ApplicationState& state) {
     auto passwordConfirm = std::make_shared<std::string>();
     auto error = std::make_shared<std::string>("");
 
-    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption());
-    auto inputFirstName = Input(firstName.get(), "Imię", getWhiteInputOption());
-    auto inputLastName = Input(lastName.get(), "Nazwisko", getWhiteInputOption());
-    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true));
-    auto inputPassConfirm = Input(passwordConfirm.get(), "Powtórz hasło", getWhiteInputOption(true));
-
-
-    auto btnOk = Button("Zarejestruj", [this, &state, email, firstName, lastName, password, passwordConfirm, error] {
+    auto btnOkAction = [this, &state, email, firstName, lastName, password, passwordConfirm, error] {
         if (email->empty() || password->empty() || firstName->empty() || lastName->empty()) {
             *error = "Pola nie mogą być puste";
             return;
@@ -430,7 +447,16 @@ Component View::constructRegisterModal(ApplicationState& state) {
         } else {
             *error = "Taki użytkownik już istnieje";
         }
-    }, ButtonOption::Ascii());
+    };
+
+    auto inputEmail = Input(email.get(), "E-mail", getWhiteInputOption(false, btnOkAction));
+    auto inputFirstName = Input(firstName.get(), "Imię", getWhiteInputOption(false, btnOkAction));
+    auto inputLastName = Input(lastName.get(), "Nazwisko", getWhiteInputOption(false, btnOkAction));
+    auto inputPass = Input(password.get(), "Hasło", getWhiteInputOption(true, btnOkAction));
+    auto inputPassConfirm = Input(passwordConfirm.get(), "Powtórz hasło", getWhiteInputOption(true, btnOkAction));
+
+
+    auto btnOk = Button("Zarejestruj", btnOkAction, ButtonOption::Ascii());
 
     auto btnCancel = Button("Anuluj", [&state] { state.isRegisterModalOpen = false; }, ButtonOption::Ascii());
 
@@ -505,11 +531,7 @@ Component View::constructAccountSettingsModal(ApplicationState& state) {
     auto message = std::make_shared<std::string>("");
     auto isError = std::make_shared<bool>(false);
 
-    auto inputOldPass = Input(oldPassword.get(), "Stare hasło", getWhiteInputOption(true));
-    auto inputNewPass = Input(newPassword.get(), "Nowe hasło", getWhiteInputOption(true));
-    auto inputConfirmPass = Input(confirmPassword.get(), "Powtórz nowe hasło", getWhiteInputOption(true));
-
-    auto btnOk = Button("Zmień hasło", [this, &state, oldPassword, newPassword, confirmPassword, message, isError] {
+    auto btnOkAction = [this, &state, oldPassword, newPassword, confirmPassword, message, isError] {
         if (newPassword->empty()) {
             *message = "Nowe hasło nie może być puste";
             *isError = true;
@@ -532,7 +554,13 @@ Component View::constructAccountSettingsModal(ApplicationState& state) {
             *message = "Błędne stare hasło";
             *isError = true;
         }
-    }, ButtonOption::Ascii());
+    };
+
+    auto inputOldPass = Input(oldPassword.get(), "Stare hasło", getWhiteInputOption(true, btnOkAction));
+    auto inputNewPass = Input(newPassword.get(), "Nowe hasło", getWhiteInputOption(true, btnOkAction));
+    auto inputConfirmPass = Input(confirmPassword.get(), "Powtórz nowe hasło", getWhiteInputOption(true, btnOkAction));
+
+    auto btnOk = Button("Zmień hasło", btnOkAction, ButtonOption::Ascii());
 
     auto btnClose = Button("Zamknij", [&state, oldPassword, newPassword, confirmPassword, message] {
         state.isAccountSettingsModalOpen = false;
