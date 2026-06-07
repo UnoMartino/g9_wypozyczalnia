@@ -134,14 +134,6 @@ ShortcutMap Application::getShortcutsForContext(FocusKind focus) {
     switch (focus) {
         case FocusKind::TOPBAR: {
             shortcuts.insert({
-                {Event::Character('z'), []{
-                    // show popup with sign in screen
-                }},
-
-                {Event::Character('Z'), []{
-                    // show popup with sign up screen
-                }},
-
                 {Event::Backspace, [this] {
                     if (m_state.navigationStack.size() > 1) {
                         m_state.navigationStack.pop_back();
