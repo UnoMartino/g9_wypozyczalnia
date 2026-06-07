@@ -6,14 +6,13 @@
 
 // ====
 
-Component constructPostcardComponent(const std::unique_ptr<Vehicle>& vehicle, std::function<void()> action) {
+Component constructPostcardComponent(Vehicle* vehicle, std::function<void()> action) {
     ButtonOption opt;
-    Vehicle* vehicle_ptr = vehicle.get();
 
-    opt.transform = [vehicle_ptr] (const EntryState& es) -> Element {
+    opt.transform = [vehicle] (const EntryState& es) -> Element {
         Elements detail_lines;
 
-        auto details_map = vehicle_ptr->getDetails();
+        auto details_map = vehicle->getDetails();
 
         for (const auto& [key, value] : details_map) {
             detail_lines.push_back(text(key + ": " + value) | dim);
@@ -21,9 +20,9 @@ Component constructPostcardComponent(const std::unique_ptr<Vehicle>& vehicle, st
 
         auto content = vbox({ vbox({
                 hbox({
-                    text("Klasa: " + std::string(tierToString(vehicle_ptr->getTier()))) | color(Color::Red),
+                    text("Klasa: " + std::string(tierToString(vehicle->getTier()))) | color(Color::Red),
                     filler(),
-                    text("Cena: " + std::to_string(vehicle_ptr->getPrice()) + " zł / doba")
+                    text("Cena: " + std::to_string(vehicle->getPrice()) + " zł / zaliczka")
                 }) | flex | size(WIDTH, GREATER_THAN, 12),
 
                 separator(),
