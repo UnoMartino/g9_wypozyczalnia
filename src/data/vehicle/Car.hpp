@@ -67,4 +67,6 @@ public:
         };
     };
 
+    json toJSON() const override;
+
 }; // Car
