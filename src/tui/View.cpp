@@ -476,12 +476,12 @@ Component View::constructRegisterModal(ApplicationState& state) {
                 vbox({
                     hbox(text("E-mail:        "), container->ChildAt(i++)->Render()),
                     hbox(text("Imię:          "), container->ChildAt(i++)->Render()),
-                    hbox(text("Hasło:         "), container->ChildAt(i++)->Render()),
                     hbox(text("Nazwisko:      "), container->ChildAt(i++)->Render()),
+                    hbox(text("Hasło:         "), container->ChildAt(i++)->Render()),
                     hbox(text("Powtórz hasło: "), container->ChildAt(i++)->Render()),
                     text(*error) | color(Color::Red) | hcenter,
                     filler(),
-                    container->ChildAt(5)->Render() | hcenter
+                    container->ChildAt(i++)->Render() | hcenter
                 }) | borderEmpty | color(Color::White),
             })) | size(WIDTH, EQUAL, 50) | clear_under | center;
     });
