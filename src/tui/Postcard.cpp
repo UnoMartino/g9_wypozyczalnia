@@ -22,6 +22,8 @@ Component constructPostcardComponent(Vehicle* vehicle, std::function<void()> act
                 hbox({
                     text("Klasa: " + std::string(tierToString(vehicle->getTier()))) | color(Color::Red),
                     filler(),
+                    text(vehicle->getName()) | color(Color::Gold1) | bold,
+                    filler(),
                     text("Cena: " + std::to_string(vehicle->getPrice()) + " zł / zaliczka")
                 }) | flex | size(WIDTH, GREATER_THAN, 12),
 
