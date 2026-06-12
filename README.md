@@ -10,7 +10,7 @@ Projekt to aplikacja terminalowa (TUI) symulująca system wypożyczalni samochod
 
 **Główne funkcjonalności:**  
 - **System logowania i uwierzytelniania:** Obsługa kont użytkowników z podziałem na uprawnienia (np. administrator, klient).  
-- **Panel Administratora:** Dedykowany moduł pozwalający na zarządzanie bazą pojazdów, zamówieniami oraz konfiguracją systemu.  
+- **Panel Administratora:** Dedykowany moduł pozwalający na zarządzanie bazą pojazdów.  
 - **Baza pojazdów:** Przechowywanie szczegółowych informacji o dostępnych samochodach, ich statusie i specyfikacji.  
 - **System zamówień i kalendarz:** Procesowanie wypożyczeń, sprawdzanie dostępności pojazdów w wybranym terminie za pomocą interaktywnego kalendarza.  
 - **Interaktywny interfejs (TUI):** Nawigacja klawiaturą i myszką, dynamiczne widoki (Rightpanel, widoki zamówień) oraz płynne przełączanie aktywnych elementów (focusów).
@@ -21,7 +21,7 @@ Projekt to aplikacja terminalowa (TUI) symulująca system wypożyczalni samochod
 
 Projekt korzysta z autorskiego systemu budowania opartego na `nob.h`, co pozwala na całkowite pominięcie konfiguracji CMake. Skrypt automatycznie pobiera pliki `.cpp` z katalogu `src/` (oraz niezbędne pliki bibliotek) i odtwarza strukturę w katalogu `build/obj/`.
 
-Aby skompilować projekt, system operacyjny musi posiadać kompilator C/C++ (np. `clang++` lub `g++`). Należy upewnić się, że ustawiono odpowiednie zmienne środowiskowe `CXX`.
+Aby skompilować projekt, system operacyjny musi posiadać kompilator C/C++ (np. `clang++` lub `g++`). Należy upewnić się, że ustawiono odpowiednie zmienne środowiskowe `CC` oraz `CXX`.
 
 ### Uruchomienie na Linux / macOS
 ```sh
@@ -33,16 +33,17 @@ Aby skompilować projekt, system operacyjny musi posiadać kompilator C/C++ (np.
 .\build.bat [flag] [action] [mode]
 ```
 
-**Flagi (`[flag]`):** `-jX` – Flaga określająca liczbę wątków (X) podczas kompilacji (np. `-j8`), co znacznie przyspiesza proces budowania.  
+**Flagi (`[flag]`):**   
+`-jX` – Flaga określająca liczbę wątków (X) podczas kompilacji (np. `-j8`), co znacznie przyspiesza proces budowania.  
 
 **Akcja (`[action]`):**  
 `build` *(domyślnie)* – kompiluje i linkuje projekt (tylko zmienione pliki), tworząc plik wykonywalny w folderze `build/`.  
-`run` – kompiluje projekt (jeśli konieczne) i natychmiast go uruchamia. Wszelkie parametry dopisane po `[mode]` są przekazywane bezpośrednio do programu.
+`run` – kompiluje projekt (jeśli konieczne) i natychmiast go uruchamia.  
 `clean` – czyści katalog obiektowy `build/obj/` oraz usuwa plik wykonywalny.  
 
-**Tryb (`[mode]`):**
-`debug` *(domyślnie)* – kompiluje program z flagami debugowania (brak optymalizacji, włączone informacje o debugowaniu i ostrzeżenia).
-`release` – pomija flagi debugowania i stosuje pełną optymalizację poziomu `-O3`.
+**Tryb (`[mode]`):**  
+`debug` *(domyślnie)* – kompiluje program z flagami debugowania (brak optymalizacji, włączone informacje o debugowaniu i ostrzeżenia).  
+`release` – pomija flagi debugowania i stosuje pełną optymalizację poziomu `-O3`.  
 
 ---
 
@@ -52,13 +53,13 @@ Prace nad projektem zostały podzielone między członków zespołu, aby zmaksym
 
 **Marcin Madanowicz**
 Panel Administratora (`AdminPanel.cpp`).
-Testy interfejsu oraz UX.
+Testy interfejsu oraz UX. Dokumentacja projektu.
 
 **Oskar Strzelecki**
 System logowania i autoryzacji użytkowników.
 Model danych pojazdów (`Vehicle`, `Car`).
 Projekt i wdrożenie systemu danych (współpraca z Jakubem).
-Autorski system budowania kompilujący projekt (`nob.h`).
+System budowania kompilujący projekt oparty na `nob.h`.
 Bug-fixy, łatki bezpieczeństwa i stabilności.
 
 **Sandra Wróblewska**
