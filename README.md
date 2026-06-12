@@ -33,14 +33,12 @@ Aby skompilować projekt, system operacyjny musi posiadać kompilator C/C++ (np.
 .\build.bat [flag] [action] [mode]
 ```
 
-### Flagi (`[flag]`)
+**Flagi (`[flag]`):** `-jX` – Flaga określająca liczbę wątków (X) podczas kompilacji (np. `-j8`), co znacznie przyspiesza proces budowania.  
 
-`-jX` – Flaga określająca liczbę wątków (X) podczas kompilacji (np. `-j8`), co znacznie przyspiesza proces budowania.
-
-**Akcja (`[action]`):**
-`build` *(domyślnie)* – kompiluje i linkuje projekt (tylko zmienione pliki), tworząc plik wykonywalny w folderze `build/`.
+**Akcja (`[action]`):**  
+`build` *(domyślnie)* – kompiluje i linkuje projekt (tylko zmienione pliki), tworząc plik wykonywalny w folderze `build/`.  
 `run` – kompiluje projekt (jeśli konieczne) i natychmiast go uruchamia. Wszelkie parametry dopisane po `[mode]` są przekazywane bezpośrednio do programu.
-`clean` – czyści katalog obiektowy `build/obj/` oraz usuwa plik wykonywalny.
+`clean` – czyści katalog obiektowy `build/obj/` oraz usuwa plik wykonywalny.  
 
 **Tryb (`[mode]`):**
 `debug` *(domyślnie)* – kompiluje program z flagami debugowania (brak optymalizacji, włączone informacje o debugowaniu i ostrzeżenia).
