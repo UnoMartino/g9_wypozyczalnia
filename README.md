@@ -1,6 +1,6 @@
 # Wypożyczalnia Samochodów - Grupa 9 
 
-![Diagram programu](docs/img/Flowchart.jpg)
+![Diagram programu](docs/img/Flowchart.png)
 
 ---
 
